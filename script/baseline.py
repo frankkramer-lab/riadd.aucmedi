@@ -21,14 +21,14 @@
 #-----------------------------------------------------#
 # External libraries
 import os
-import numpy as np
+import json
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, \
                                        ReduceLROnPlateau, EarlyStopping
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
-from aucmedi.utils.class_weights import compute_sample_weights
+from aucmedi.utils.class_weights import compute_sample_weights, compute_class_weights
 from aucmedi.data_processing.subfunctions import Padding
 
 #-----------------------------------------------------#
@@ -43,7 +43,7 @@ path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
 # Initialize input data reader
 ds = input_interface(interface="csv", path_imagedir=path_images, path_data=path_csv,
-                     ohe=True, col_sample="ID")
+                     ohe=False, col_sample="ID", col_class="Disease_Risk")
 (index_list, class_ohe, nclasses, class_names, image_format) = ds
 
 # Create result directory
@@ -51,25 +51,29 @@ path_res = os.path.join("results")
 if not os.path.exists(path_res) : os.mkdir(path_res)
 
 # Split complete dataset to train-val / test
-X_train, X_test, y_train, y_test = train_test_split(index_list,
+X_trainval, X_test, y_trainval, y_test = train_test_split(index_list,
                                                           class_ohe,
                                                           stratify=class_ohe,
                                                           test_size=0.1,
                                                           random_state=33)
-# # Split train-val dataset to train / val
-# X_train, X_val, y_train, y_val = train_test_split(X_trainval,
-#                                                   y_trainval,
-#                                                   stratify=y_trainval,
-#                                                   test_size=0.1,
-#                                                   random_state=1)
+# Split train-val dataset to train / val
+X_train, X_val, y_train, y_val = train_test_split(X_trainval,
+                                                  y_trainval,
+                                                  stratify=y_trainval,
+                                                  test_size=0.1,
+                                                  random_state=1)
 
 # Store sampling to disk
-np.savetxt(os.path.join(path_res, "sampling.train.csv"), X_train, delimiter=",")
-# np.savetxt(os.path.join(path_res, "sampling.val.csv"), X_val, delimiter=",")
-np.savetxt(os.path.join(path_res, "sampling.test.csv"), X_test, delimiter=",")
+with open(os.path.join(path_res, "sampling.json"), "w") as file:
+    json_dict = {"train": X_train,
+                 "val": X_val,
+                 "test": X_test}
+    json.dump(json_dict, file, indent=2)
 
-# Compute sample weights
-sample_weights = compute_sample_weights(ohe_array=y_train)
+# # Compute sample weights
+# sample_weights = compute_sample_weights(ohe_array=y_train)
+# Compute class weights
+class_weights = compute_class_weights(ohe_array=y_train)
 
 # Initialize Image Augmentation
 aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
@@ -83,7 +87,7 @@ aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
 sf_list = [Padding(mode="square")]
 
 # Set activation output to sigmoid for multi-label classification
-activation_output = "sigmoid"
+activation_output = "softmax"
 # Define architectures which should be processed
 architectures = ["Vanilla", "DenseNet121", "ResNet152", "Xception"]
 
@@ -104,11 +108,11 @@ for arch in architectures:
     train_gen = DataGenerator(X_train, path_images, labels=y_train, batch_size=32,
                              img_aug=aug, subfunctions=sf_list, standardize_mode=sf_standardize,
                              shuffle=True, resize=input_shape, grayscale=False, prepare_images=False,
-                             sample_weights=sample_weights, seed=None, image_format=image_format)
-    val_gen = DataGenerator(X_test, path_images, labels=y_test, batch_size=32,
+                             sample_weights=None, seed=None, image_format=image_format, workers=8)
+    val_gen = DataGenerator(X_val, path_images, labels=y_val, batch_size=32,
                             img_aug=aug, subfunctions=sf_list, standardize_mode=sf_standardize,
                             shuffle=False, resize=input_shape, grayscale=False, prepare_images=False,
-                            sample_weights=None, seed=None, image_format=image_format)
+                            sample_weights=None, seed=None, image_format=image_format, workers=8)
 
     # Define callbacks
     cb_mc = ModelCheckpoint(os.path.join(path_res, arch + ".model.best.hdf5"),
@@ -122,7 +126,7 @@ for arch in architectures:
 
     # Train model
     model.train(train_gen, val_gen, epochs=150, callbacks=callbacks,
-                transfer_learning=True)
+                transfer_learning=True, class_weights=class_weights)
 
     # Load best model
     model.load(os.path.join(path_res, arch + ".model.best.hdf5"))
@@ -131,10 +135,12 @@ for arch in architectures:
     test_gen = DataGenerator(X_test, path_images, labels=None, batch_size=32,
                              img_aug=None, subfunctions=sf_list, standardize_mode=sf_standardize,
                              shuffle=False, resize=input_shape, grayscale=False, prepare_images=False,
-                             sample_weights=None, seed=None, image_format=image_format)
+                             sample_weights=None, seed=None, image_format=image_format, workers=8)
 
     # Use fitted model for predictions
     preds = model.predict(test_gen)
+
+    print(preds)
 
     # Store predictions to disk
     np.savetxt(os.path.join(path_res, arch + ".predictions.csv"),
