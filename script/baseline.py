@@ -96,8 +96,8 @@ architectures = ["Vanilla", "DenseNet121", "ResNet152", "Xception"]
 for arch in architectures:
     # Initialize model
     model = Neural_Network(nclasses, channels=3, architecture=arch,
-                           workers=64, batch_queue_size=100,
-                           pretrained_weights=True, multiprocessing=True)
+                           workers=16, batch_queue_size=25,
+                           pretrained_weights=True, multiprocessing=False)
     model.model.summary()
 
     # Obtain standardization mode for current architecture
@@ -126,7 +126,7 @@ for arch in architectures:
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, callbacks=callbacks,
+    model.train(train_gen, val_gen, epochs=150, iterations=150, callbacks=callbacks,
                 transfer_learning=True, class_weights=class_weights)
 
     # Load best model
