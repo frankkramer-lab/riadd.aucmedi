@@ -34,10 +34,11 @@ from aucmedi.data_processing.subfunctions import Padding
 #-----------------------------------------------------#
 #              AUCMEDI Baseline for RIADD             #
 #-----------------------------------------------------#
-# os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # Provide pathes to imaging and annotation data
-path_riadd = "/home/mudomini/data/RIADD/Training_Set/"
+#path_riadd = "/home/mudomini/data/RIADD/Training_Set/"
+path_riadd = "/storage/riadd2021/Training_Set/"
 path_images = os.path.join(path_riadd, "Training")
 path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
