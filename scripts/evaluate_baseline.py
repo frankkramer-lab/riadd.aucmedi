@@ -12,7 +12,7 @@ df_auroc = pd.DataFrame(data=[], dtype=np.float64, columns=["arch", "class", "au
 
 for file in os.listdir(path_res):
     if not file.endswith(".predictions.csv") : continue
-    arch = file.split(".")[0]
+    arch = file[:-len(".predictions.csv")]
 
     dt = pd.read_csv(os.path.join(path_res, file))
 
