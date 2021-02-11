@@ -25,21 +25,35 @@ import json
 import pandas as pd
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, \
                                        ReduceLROnPlateau, EarlyStopping
+from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
-from aucmedi.sampling import sampling_split
+from aucmedi.sampling import sampling_kfold
 
 #-----------------------------------------------------#
-#              AUCMEDI Baseline for RIADD             #
+#                   Configurations                    #
 #-----------------------------------------------------#
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # Provide pathes to imaging and annotation data
-#path_riadd = "/home/mudomini/data/RIADD/Training_Set/"
 path_riadd = "/storage/riadd2021/Training_Set/"
+
+# Define some parameters
+k_fold = 5
+processes = 50
+batch_queue_size = 75
+threads = 8
+
+# Define architectures which should be processed
+architectures = ["VGG16", "DenseNet169", "ResNet152", "EfficientNetB4", "Xception",
+                 "ResNeXt101", "InceptionResNetV2"]
+
+#-----------------------------------------------------#
+#          AUCMEDI Classifier Setup for RIADD         #
+#-----------------------------------------------------#
 path_images = os.path.join(path_riadd, "Training")
 path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
@@ -47,108 +61,99 @@ path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS", "CSR",
         "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT", "RT", "RS",
         "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
-ds = input_interface(interface="csv", path_imagedir=path_images, path_data=path_csv,
-                     ohe=True, col_sample="ID", ohe_range=cols)
+ds = input_interface(interface="csv", path_imagedir=path_images,
+                     path_data=path_csv, ohe=True, col_sample="ID",
+                     ohe_range=cols)
 (index_list, class_ohe, nclasses, class_names, image_format) = ds
 
-# Create result directory
-path_res = os.path.join("results")
-if not os.path.exists(path_res) : os.mkdir(path_res)
+# Create models directory
+path_models = os.path.join("models")
+if not os.path.exists(path_models) : os.mkdir(path_models)
 
-# Sample dataset
-subsets = sampling_split(index_list, class_ohe, sampling=[0.8, 0.1, 0.1],
+# Sample dataset via k-fold cross-validation
+subsets = sampling_kfold(index_list, class_ohe, n_splits=k_fold,
                          stratified=True, iterative=True, seed=0)
-X_train = subsets[0][0]
-y_train = subsets[0][1]
-X_val = subsets[1][0]
-y_val = subsets[1][1]
-X_test = subsets[2][0]
-y_test = subsets[2][1]
 
 # Store sampling to disk
-with open(os.path.join(path_res, "sampling.json"), "w") as file:
-    json_dict = {"train": X_train.tolist(),
-                 "val": X_val.tolist(),
-                 "test": X_test.tolist()}
-    json.dump(json_dict, file, indent=2)
+sampling_dict = {}
+for i, fold in enumerate(subsets):
+    (x_train, y_train, x_val, y_val) = fold
+    sampling_dict["cv_" + str(i)] = {"train": x_train.tolist(),
+                                     "val": x_val.tolist()}
+with open(os.path.join(path_models, "sampling.json"), "w") as file:
+    json.dump(sampling_dict, file, indent=2)
 
 # Compute sample weights
 sample_weights = compute_sample_weights(ohe_array=y_train)
-
 # Initialize Image Augmentation
 aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
                          saturation=False, hue=False, scale=True, crop=False,
-                         grid_distortion=True, compression=False,
+                         grid_distortion=True, compression=False, gamma=False,
                          gaussian_noise=False, gaussian_blur=False,
-                         downscaling=False, gamma=False,
-                         elastic_transform=False)
-
+                         downscaling=False, elastic_transform=False)
 # Define Subfunctions
 sf_list = [Padding(mode="square")]
-
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
-# Define architectures which should be processed
-architectures = ["DenseNet121", "DenseNet169", "ResNet101", "ResNet152",
-                 "EfficientNetB2", "EfficientNetB4", "Xception"]
 
-# Create pipelines for each architectures
+#-----------------------------------------------------#
+#        AUCMEDI Classifier Training for RIADD        #
+#-----------------------------------------------------#
+# Run a k-fold CV for each architecture
 for arch in architectures:
-    # Initialize model
-    model = Neural_Network(nclasses, channels=3, architecture=arch,
-                           workers=50, batch_queue_size=75,
-                           activation_output=activation_output,
-                           loss="binary_crossentropy",
-                           pretrained_weights=True, multiprocessing=True)
-    model.model.summary()
+    # Create architecture directory
+    path_arch = os.path.join(path_models, arch)
+    if not os.path.exists(path_arch) : os.mkdir(path_arch)
 
-    # Obtain standardization mode for current architecture
-    sf_standardize = supported_standardize_mode[arch]
-    # Obtain standard input shape for current architecture
-    input_shape = model.input_shape[:-1]
+    # Iterate over each fold of the CV
+    for i, fold in enumerate(subsets):
+        # Obtain data samplings
+        (x_train, y_train, x_val, y_val) = fold
 
-    # Initialize training and validation Data Generators
-    train_gen = DataGenerator(X_train, path_images, labels=y_train, batch_size=32,
-                             img_aug=aug, subfunctions=sf_list, standardize_mode=sf_standardize,
-                             shuffle=True, resize=input_shape, grayscale=False, prepare_images=False,
-                             sample_weights=sample_weights, seed=None, image_format=image_format, workers=8)
-    val_gen = DataGenerator(X_val, path_images, labels=y_val, batch_size=32,
-                            img_aug=aug, subfunctions=sf_list, standardize_mode=sf_standardize,
-                            shuffle=False, resize=input_shape, grayscale=False, prepare_images=False,
-                            sample_weights=None, seed=None, image_format=image_format, workers=8)
+        # Initialize model
+        model = Neural_Network(nclasses, channels=3, architecture=arch,
+                               workers=processes,
+                               batch_queue_size=batch_queue_size,
+                               activation_output=activation_output,
+                               loss="binary_crossentropy",
+                               metrics=["binary_accuracy", AUC(100)],
+                               pretrained_weights=True, multiprocessing=True)
 
-    # Define callbacks
-    cb_mc = ModelCheckpoint(os.path.join(path_res, arch + ".model.best.hdf5"),
-                            monitor="val_loss", verbose=1,
-                            save_best_only=True, mode="min")
-    cb_cl = CSVLogger(os.path.join(path_res, arch + ".logs.csv"), separator=',')
-    cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
-                              verbose=1, mode='min', min_lr=1e-6)
-    cb_es = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
-    callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
+        # Obtain standardization mode for current architecture
+        sf_standardize = supported_standardize_mode[arch]
+        # Obtain standard input shape for current architecture
+        input_shape = model.input_shape[:-1]
 
-    # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=150, callbacks=callbacks,
-                transfer_learning=True)
+        # Initialize training and validation Data Generators
+        train_gen = DataGenerator(x_train, path_images, labels=y_train,
+                                  batch_size=32, img_aug=aug, shuffle=True,
+                                  subfunctions=sf_list, resize=input_shape,
+                                  standardize_mode=sf_standardize,
+                                  grayscale=False, prepare_images=False,
+                                  sample_weights=sample_weights, seed=None,
+                                  image_format=image_format, workers=threads)
+        val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=32,
+                                img_aug=None, subfunctions=sf_list, shuffle=False,
+                                standardize_mode=sf_standardize, resize=input_shape,
+                                grayscale=False, prepare_images=False, seed=None,
+                                sample_weights=None, image_format=image_format,
+                                workers=8)
 
-    # Load best model
-    model.load(os.path.join(path_res, arch + ".model.best.hdf5"))
+        # Define callbacks
+        cb_mc = ModelCheckpoint(os.path.join(path_arch, "cv_" + str(i) + \
+                                             ".model.best.hdf5"),
+                                monitor="val_loss", verbose=1,
+                                save_best_only=True, mode="min")
+        cb_cl = CSVLogger(os.path.join(path_arch, "cv_" + str(i) + ".logs.csv"),
+                          separator=',')
+        cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
+                                  verbose=1, mode='min', min_lr=1e-6)
+        cb_es = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
+        callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
-    # Initialize testing Data Generator
-    test_gen = DataGenerator(X_test, path_images, labels=None, batch_size=32,
-                             img_aug=None, subfunctions=sf_list, standardize_mode=sf_standardize,
-                             shuffle=False, resize=input_shape, grayscale=False, prepare_images=False,
-                             sample_weights=None, seed=None, image_format=image_format, workers=8)
+        # Train model
+        model.train(train_gen, val_gen, epochs=150, iterations=150,
+                    callbacks=callbacks, transfer_learning=True)
 
-    # Use fitted model for predictions
-    preds = model.predict(test_gen)
-
-    # Create prediction dataset
-    df_index = pd.DataFrame(data={"index:": X_test})
-    df_gt = pd.DataFrame(data=y_test, columns=["gt_" + s for s in cols])
-    df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
-    df_merged = pd.concat([df_index, df_gt, df_pd], axis=1, sort=False)
-
-    # Store predictions to disk
-    df_merged.to_csv(os.path.join(path_res, arch + ".predictions.csv"),
-                     index=False)
+        # Dump latest model
+        model.dump(os.path.join(path_arch, "cv_" + str(i) + ".model.last.hdf5"))
