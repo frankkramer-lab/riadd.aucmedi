@@ -163,7 +163,23 @@ for arch in architectures:
     df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
     df_merged = pd.concat([df_index, df_gt, df_pd], axis=1, sort=False)
     # Store predictions to disk
-    df_merged.to_csv(os.path.join(path_res, arch + ".augmenting.predictions.csv"),
+    df_merged.to_csv(os.path.join(path_res, arch + ".augmenting_mean.predictions.csv"),
+                     index=False)
+
+    # Apply Inference Augmenting
+    preds = predict_augmenting(model, X_test, path_images, n_cycles=20,
+                               img_aug=aug, aggregate="softmax",
+                               image_format=image_format, batch_size=32,
+                               resize=input_shape, grayscale=False,
+                               subfunctions=sf_list, seed=None,
+                               standardize_mode=sf_standardize, workers=8)
+    # Create prediction dataset
+    df_index = pd.DataFrame(data={"index:": X_test})
+    df_gt = pd.DataFrame(data=y_test, columns=["gt_" + s for s in cols])
+    df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
+    df_merged = pd.concat([df_index, df_gt, df_pd], axis=1, sort=False)
+    # Store predictions to disk
+    df_merged.to_csv(os.path.join(path_res, arch + ".augmenting_softmax.predictions.csv"),
                      index=False)
 
     # Garbage collection
