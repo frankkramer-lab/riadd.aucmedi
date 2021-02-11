@@ -157,3 +157,8 @@ for arch in architectures:
 
         # Dump latest model
         model.dump(os.path.join(path_arch, "cv_" + str(i) + ".model.last.hdf5"))
+
+        # Garbage collection
+        del train_gen
+        del val_gen
+        del model
