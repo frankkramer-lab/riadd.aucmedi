@@ -32,6 +32,7 @@ from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_split
+from aucmedi.ensembler import predict_augmenting
 
 #-----------------------------------------------------#
 #              AUCMEDI Baseline for RIADD             #
@@ -86,8 +87,8 @@ sf_list = [Padding(mode="square")]
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
 # Define architectures which should be processed
-architectures = ["VGG16", "DenseNet169", "ResNet152", "EfficientNetB4", "Xception",
-                 "ResNeXt101", "InceptionResNetV2"]
+architectures = ["VGG16", "DenseNet169", "ResNet101", "ResNet152", "EfficientNetB4",
+                 "Xception", "ResNeXt101", "InceptionResNetV2"]
 
 # Create pipelines for each architectures
 for arch in architectures:
@@ -140,15 +141,29 @@ for arch in architectures:
 
     # Use fitted model for predictions
     preds = model.predict(test_gen)
-
     # Create prediction dataset
     df_index = pd.DataFrame(data={"index:": X_test})
     df_gt = pd.DataFrame(data=y_test, columns=["gt_" + s for s in cols])
     df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
     df_merged = pd.concat([df_index, df_gt, df_pd], axis=1, sort=False)
-
     # Store predictions to disk
-    df_merged.to_csv(os.path.join(path_res, arch + ".predictions.csv"),
+    df_merged.to_csv(os.path.join(path_res, arch + ".simple.predictions.csv"),
+                     index=False)
+
+    # Apply Inference Augmenting
+    preds = predict_augmenting(model, X_test, path_images, n_cycles=20,
+                               img_aug=aug, aggregate="mean",
+                               image_format=image_format, batch_size=32,
+                               resize=input_shape, grayscale=False,
+                               subfunctions=sf_list, seed=None,
+                               standardize_mode=sf_standardize, workers=8)
+    # Create prediction dataset
+    df_index = pd.DataFrame(data={"index:": X_test})
+    df_gt = pd.DataFrame(data=y_test, columns=["gt_" + s for s in cols])
+    df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
+    df_merged = pd.concat([df_index, df_gt, df_pd], axis=1, sort=False)
+    # Store predictions to disk
+    df_merged.to_csv(os.path.join(path_res, arch + ".augmenting.predictions.csv"),
                      index=False)
 
     # Garbage collection
