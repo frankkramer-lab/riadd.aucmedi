@@ -48,7 +48,7 @@ batch_queue_size = 75
 threads = 8
 
 # Define architectures which should be processed
-architectures = ["VGG16", "DenseNet169", "ResNet152", "EfficientNetB4", "Xception",
+architectures = ["VGG16", "DenseNet169", "ResNet101", "ResNet152", "EfficientNetB4",
                  "ResNeXt101", "InceptionResNetV2"]
 
 #-----------------------------------------------------#

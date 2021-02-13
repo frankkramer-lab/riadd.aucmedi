@@ -28,6 +28,9 @@ This dataset consists of diseases/abnormalities (diabetic retinopathy (DR), age-
 
 ![fig_LabelFreq](docs/label_freq.png)
 
+Microscope distribution:  
+{(1424, 2144, 3): 1493, (1536, 2048, 3): 150, (2848, 4288, 3): 277}
+
 ## Methods
 
 todo

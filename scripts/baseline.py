@@ -33,6 +33,7 @@ from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_split
 from aucmedi.ensembler import predict_augmenting
+from retinal_crop import Retinal_Crop
 
 #-----------------------------------------------------#
 #              AUCMEDI Baseline for RIADD             #
@@ -75,14 +76,14 @@ sample_weights = compute_sample_weights(ohe_array=y_train)
 
 # Initialize Image Augmentation
 aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
-                         saturation=False, hue=False, scale=True, crop=False,
-                         grid_distortion=True, compression=False,
+                         saturation=True, hue=True, scale=True, crop=False,
+                         grid_distortion=False, compression=False,
                          gaussian_noise=False, gaussian_blur=False,
                          downscaling=False, gamma=False,
                          elastic_transform=False)
 
 # Define Subfunctions
-sf_list = [Padding(mode="square")]
+sf_list = [Padding(mode="square"), Retinal_Crop]
 
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
