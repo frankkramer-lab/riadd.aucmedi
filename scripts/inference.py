@@ -38,7 +38,7 @@ from aucmedi.sampling import sampling_kfold
 #-----------------------------------------------------#
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
-# Provide pathes to imaging and annotation data
+# Provide pathes to imaging data
 path_riadd = "/storage/riadd2021/Training_Set/"
 
 # Define some parameters
@@ -54,62 +54,35 @@ architectures = ["VGG16", "DenseNet169", "ResNet101", "ResNet152", "EfficientNet
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
 #-----------------------------------------------------#
-path_images = os.path.join(path_riadd, "Training")
-path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
-
 # Initialize input data reader
 cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS", "CSR",
         "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT", "RT", "RS",
         "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
-ds = input_interface(interface="csv", path_imagedir=path_images,
-                     path_data=path_csv, ohe=True, col_sample="ID",
-                     ohe_range=cols)
+ds = input_interface(interface="directory", path_imagedir=path_riadd,
+                     path_data=None, training=False)
 (index_list, class_ohe, nclasses, class_names, image_format) = ds
+nclasses = len(cols)
 
-# Create models directory
+# Create result directory
+path_res = os.path.join("preds")
+if not os.path.exists(path_res) : os.mkdir(path_res)
+# Obtain model directory
 path_models = os.path.join("models")
-if not os.path.exists(path_models) : os.mkdir(path_models)
 
-# Sample dataset via k-fold cross-validation
-subsets = sampling_kfold(index_list, class_ohe, n_splits=k_fold,
-                         stratified=True, iterative=True, seed=0)
-
-# Store sampling to disk
-sampling_dict = {}
-for i, fold in enumerate(subsets):
-    (x_train, y_train, x_val, y_val) = fold
-    sampling_dict["cv_" + str(i)] = {"train": x_train.tolist(),
-                                     "val": x_val.tolist()}
-with open(os.path.join(path_models, "sampling.json"), "w") as file:
-    json.dump(sampling_dict, file, indent=2)
-
-# Compute sample weights
-sample_weights = compute_sample_weights(ohe_array=y_train)
-# Initialize Image Augmentation
-aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
-                         saturation=False, hue=False, scale=True, crop=False,
-                         grid_distortion=True, compression=False, gamma=False,
-                         gaussian_noise=False, gaussian_blur=False,
-                         downscaling=False, elastic_transform=False)
 # Define Subfunctions
 sf_list = [Padding(mode="square")]
+
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
 
 #-----------------------------------------------------#
-#        AUCMEDI Classifier Training for RIADD        #
+#        AUCMEDI Classifier Inference for RIADD       #
 #-----------------------------------------------------#
 # Run a k-fold CV for each architecture
 for arch in architectures:
-    # Create architecture directory
     path_arch = os.path.join(path_models, arch)
-    if not os.path.exists(path_arch) : os.mkdir(path_arch)
-
     # Iterate over each fold of the CV
-    for i, fold in enumerate(subsets):
-        # Obtain data samplings
-        (x_train, y_train, x_val, y_val) = fold
-
+    for i in range(0, k_fold):
         # Initialize model
         model = Neural_Network(nclasses, channels=3, architecture=arch,
                                workers=processes,
@@ -124,41 +97,69 @@ for arch in architectures:
         # Obtain standard input shape for current architecture
         input_shape = model.input_shape[:-1]
 
-        # Initialize training and validation Data Generators
-        train_gen = DataGenerator(x_train, path_images, labels=y_train,
-                                  batch_size=32, img_aug=aug, shuffle=True,
-                                  subfunctions=sf_list, resize=input_shape,
-                                  standardize_mode=sf_standardize,
-                                  grayscale=False, prepare_images=False,
-                                  sample_weights=sample_weights, seed=None,
-                                  image_format=image_format, workers=threads)
-        val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=32,
-                                img_aug=None, subfunctions=sf_list, shuffle=False,
-                                standardize_mode=sf_standardize, resize=input_shape,
-                                grayscale=False, prepare_images=False, seed=None,
-                                sample_weights=None, image_format=image_format,
-                                workers=8)
+        # Initialize Data Generator for prediction
+        pred_gen = DataGenerator(index_list, path_riadd, labels=None,
+                                 batch_size=32, img_aug=None,
+                                 subfunctions=sf_list,
+                                 standardize_mode=sf_standardize,
+                                 shuffle=False, resize=input_shape,
+                                 grayscale=False, prepare_images=False,
+                                 sample_weights=None, seed=None,
+                                 image_format=image_format, workers=8)
 
-        # Define callbacks
-        cb_mc = ModelCheckpoint(os.path.join(path_arch, "cv_" + str(i) + \
-                                             ".model.best.hdf5"),
-                                monitor="val_loss", verbose=1,
-                                save_best_only=True, mode="min")
-        cb_cl = CSVLogger(os.path.join(path_arch, "cv_" + str(i) + ".logs.csv"),
-                          separator=',')
-        cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
-                                  verbose=1, mode='min', min_lr=1e-6)
-        cb_es = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
-        callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
+        # Load best model
+        path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
+        model.load(path_cv_model)
 
-        # Train model
-        model.train(train_gen, val_gen, epochs=150, iterations=150,
-                    callbacks=callbacks, transfer_learning=True)
+        # Use fitted model for predictions
+        preds = model.predict(test_gen)
+        # Create prediction dataset
+        df_index = pd.DataFrame(data={"ID": index_list})
+        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
+        df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
+        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
+        df_merged.sort_values(by=["ID"], inplace=True)
+        # Store predictions to disk
+        df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
+                                      ".simple.predictions.csv"),
+                         index=False)
 
-        # Dump latest model
-        model.dump(os.path.join(path_arch, "cv_" + str(i) + ".model.last.hdf5"))
+        # Apply Inference Augmenting
+        preds = predict_augmenting(model, index_list, path_riadd, n_cycles=20,
+                                   img_aug=None, aggregate="mean",
+                                   image_format=image_format, batch_size=32,
+                                   resize=input_shape, grayscale=False,
+                                   subfunctions=sf_list, seed=None,
+                                   standardize_mode=sf_standardize, workers=8)
+        # Create prediction dataset
+        df_index = pd.DataFrame(data={"ID": index_list})
+        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
+        df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
+        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
+        df_merged.sort_values(by=["ID"], inplace=True)
+        # Store predictions to disk
+        df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
+                                      ".augmenting_mean.predictions.csv"),
+                         index=False)
+
+        # Apply Inference Augmenting
+        preds = predict_augmenting(model, index_list, path_riadd, n_cycles=20,
+                                   img_aug=None, aggregate="softmax",
+                                   image_format=image_format, batch_size=32,
+                                   resize=input_shape, grayscale=False,
+                                   subfunctions=sf_list, seed=None,
+                                   standardize_mode=sf_standardize, workers=8)
+        # Create prediction dataset
+        df_index = pd.DataFrame(data={"ID": index_list})
+        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
+        df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
+        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
+        df_merged.sort_values(by=["ID"], inplace=True)
+        # Store predictions to disk
+        df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
+                                      ".augmenting_softmax.predictions.csv"),
+                         index=False)
 
         # Garbage collection
-        del train_gen
-        del val_gen
+        del pred_gen
         del model
