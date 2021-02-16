@@ -49,7 +49,7 @@ path_riadd = "/storage/riadd2021/Training_Set/"
 k_fold = 5
 processes = 8
 batch_queue_size = 16
-threads = 8
+threads = 16
 
 # Define architecture which should be processed
 arch = "ResNet152"
