@@ -23,6 +23,7 @@
 import os
 import json
 import pandas as pd
+import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, \
                                        ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.metrics import AUC
@@ -53,6 +54,9 @@ threads = 8
 # Define architecture which should be processed
 arch = "ResNet152"
 
+# Define input shape
+input_shape = (512, 512)
+
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
 #-----------------------------------------------------#
@@ -78,11 +82,12 @@ if os.path.exists(os.path.join(path_models, "sampling.json")):
     with open(os.path.join(path_models, "sampling.json"), "r") as json_reader:
         sampling_dict = json.load(json_reader)
     subsets = []
-    for fold in sampling_dict:
-        x_train = np.array(fold["x_train"])
-        y_train = np.array(fold["y_train"])
-        x_val = np.array(fold["x_val"])
-        y_val = np.array(fold["y_val"])
+    for i in range(0, k_fold):
+        fold = "cv_" + str(i)
+        x_train = np.array(sampling_dict[fold]["x_train"])
+        y_train = np.array(sampling_dict[fold]["y_train"])
+        x_val = np.array(sampling_dict[fold]["x_val"])
+        y_val = np.array(sampling_dict[fold]["y_val"])
         subsets.append((x_train, y_train, x_val, y_val))
 else:
     # Perform sampling
@@ -127,8 +132,6 @@ for i, fold in enumerate(subsets):
     sample_weights_train = compute_sample_weights(ohe_array=y_train)
     sample_weights_val = compute_sample_weights(ohe_array=y_val)
 
-    # Define input shape
-    input_shape = (512, 512)
     # Initialize architecture
     nn_arch = architecture_dict[arch](channels=3,
                                       input_shape=input_shape)
