@@ -32,6 +32,8 @@ from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_kfold
+from aucmedi.neural_network.architectures import architecture_dict
+# Custom libraries
 from retinal_crop import Retinal_Crop
 
 #-----------------------------------------------------#
