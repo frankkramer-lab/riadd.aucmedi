@@ -32,6 +32,7 @@ from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_kfold
+from retinal_crop import Retinal_Crop
 
 #-----------------------------------------------------#
 #                   Configurations                    #
@@ -48,8 +49,7 @@ batch_queue_size = 75
 threads = 8
 
 # Define architectures which should be processed
-architectures = ["VGG16", "DenseNet169", "ResNet101", "ResNet152", "EfficientNetB4",
-                 "ResNeXt101", "InceptionResNetV2"]
+architectures = ["VGG16", "DenseNet201", "ResNet152"]
 
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
@@ -83,16 +83,14 @@ for i, fold in enumerate(subsets):
 with open(os.path.join(path_models, "sampling.json"), "w") as file:
     json.dump(sampling_dict, file, indent=2)
 
-# Compute sample weights
-sample_weights = compute_sample_weights(ohe_array=y_train)
 # Initialize Image Augmentation
 aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
-                         saturation=False, hue=False, scale=True, crop=False,
-                         grid_distortion=True, compression=False, gamma=False,
+                         saturation=True, hue=True, scale=False, crop=False,
+                         grid_distortion=False, compression=False, gamma=False,
                          gaussian_noise=False, gaussian_blur=False,
                          downscaling=False, elastic_transform=False)
 # Define Subfunctions
-sf_list = [Padding(mode="square")]
+sf_list = [Padding(mode="square"), Retinal_Crop()]
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
 
@@ -110,8 +108,18 @@ for arch in architectures:
         # Obtain data samplings
         (x_train, y_train, x_val, y_val) = fold
 
+        # Compute sample weights
+        sample_weights_train = compute_sample_weights(ohe_array=y_train)
+        sample_weights_val = compute_sample_weights(ohe_array=y_val)
+
+        # Define input shape
+        input_shape = (512, 512)
+        # Initialize architecture
+        nn_arch = architecture_dict[arch](channels=3,
+                                          input_shape=input_shape)
+
         # Initialize model
-        model = Neural_Network(nclasses, channels=3, architecture=arch,
+        model = Neural_Network(nclasses, channels=3, architecture=nn_arch,
                                workers=processes,
                                batch_queue_size=batch_queue_size,
                                activation_output=activation_output,
@@ -121,8 +129,6 @@ for arch in architectures:
 
         # Obtain standardization mode for current architecture
         sf_standardize = supported_standardize_mode[arch]
-        # Obtain standard input shape for current architecture
-        input_shape = model.input_shape[:-1]
 
         # Initialize training and validation Data Generators
         train_gen = DataGenerator(x_train, path_images, labels=y_train,
@@ -130,14 +136,14 @@ for arch in architectures:
                                   subfunctions=sf_list, resize=input_shape,
                                   standardize_mode=sf_standardize,
                                   grayscale=False, prepare_images=False,
-                                  sample_weights=sample_weights, seed=None,
+                                  sample_weights=sample_weights_train, seed=None,
                                   image_format=image_format, workers=threads)
         val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=32,
                                 img_aug=None, subfunctions=sf_list, shuffle=False,
                                 standardize_mode=sf_standardize, resize=input_shape,
                                 grayscale=False, prepare_images=False, seed=None,
-                                sample_weights=None, image_format=image_format,
-                                workers=8)
+                                sample_weights=sample_weights_val,
+                                image_format=image_format, workers=8)
 
         # Define callbacks
         cb_mc = ModelCheckpoint(os.path.join(path_arch, "cv_" + str(i) + \
@@ -148,11 +154,11 @@ for arch in architectures:
                           separator=',')
         cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
                                   verbose=1, mode='min', min_lr=1e-6)
-        cb_es = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
+        cb_es = EarlyStopping(monitor='val_loss', patience=32, verbose=1)
         callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
         # Train model
-        model.train(train_gen, val_gen, epochs=150, iterations=150,
+        model.train(train_gen, val_gen, epochs=150, iterations=300,
                     callbacks=callbacks, transfer_learning=True)
 
         # Dump latest model
