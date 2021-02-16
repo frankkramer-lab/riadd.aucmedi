@@ -40,7 +40,7 @@ from retinal_crop import Retinal_Crop
 #-----------------------------------------------------#
 #                   Configurations                    #
 #-----------------------------------------------------#
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Provide pathes to imaging and annotation data
 path_riadd = "/storage/riadd2021/Training_Set/"
