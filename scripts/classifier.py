@@ -46,8 +46,8 @@ path_riadd = "/storage/riadd2021/Training_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 50
-batch_queue_size = 75
+processes = 12
+batch_queue_size = 16
 threads = 8
 
 # Define architectures which should be processed
@@ -145,7 +145,7 @@ for arch in architectures:
                                 standardize_mode=sf_standardize, resize=input_shape,
                                 grayscale=False, prepare_images=False, seed=None,
                                 sample_weights=sample_weights_val,
-                                image_format=image_format, workers=8)
+                                image_format=image_format, workers=threads)
 
         # Define callbacks
         cb_mc = ModelCheckpoint(os.path.join(path_arch, "cv_" + str(i) + \
@@ -153,7 +153,7 @@ for arch in architectures:
                                 monitor="val_loss", verbose=1,
                                 save_best_only=True, mode="min")
         cb_cl = CSVLogger(os.path.join(path_arch, "cv_" + str(i) + ".logs.csv"),
-                          separator=',')
+                          separator=',', append=True)
         cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
                                   verbose=1, mode='min', min_lr=1e-6)
         cb_es = EarlyStopping(monitor='val_loss', patience=32, verbose=1)
