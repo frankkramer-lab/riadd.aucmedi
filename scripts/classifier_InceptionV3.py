@@ -47,8 +47,8 @@ path_riadd = "/storage/riadd2021/Training_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 8
-batch_queue_size = 16
+processes = 16
+batch_queue_size = 32
 threads = 16
 
 # Define architecture which should be processed
@@ -176,7 +176,7 @@ for i, fold in enumerate(subsets):
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=300,
+    model.train(train_gen, val_gen, epochs=150, iterations=200,
                 callbacks=callbacks, transfer_learning=True)
 
     # Dump latest model
