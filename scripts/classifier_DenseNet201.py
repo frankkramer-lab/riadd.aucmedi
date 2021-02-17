@@ -65,9 +65,9 @@ path_images = os.path.join(path_riadd, "Training")
 path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
 # Initialize input data reader
-cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS", "CSR",
-        "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT", "RT", "RS",
-        "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
+cols = ["Disease_Risk", "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM",
+        "LS", "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
+        "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
 ds = input_interface(interface="csv", path_imagedir=path_images,
                      path_data=path_csv, ohe=True, col_sample="ID",
                      ohe_range=cols)
