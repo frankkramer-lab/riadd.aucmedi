@@ -31,7 +31,7 @@ from tensorflow.keras.metrics import AUC
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
-from aucmedi.data_processing.subfunctions import Padding, Crop, Resize
+from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_kfold
 from aucmedi.neural_network.architectures import architecture_dict
 from aucmedi.utils.callbacks import MinEpochEarlyStopping
@@ -44,7 +44,8 @@ from retinal_crop import Retinal_Crop
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Provide pathes to imaging and annotation data
-path_riadd = "/storage/riadd2021/Training_Set/"
+# path_riadd = "/storage/riadd2021/Training_Set/"
+path_riadd = "/storage/riadd2021/Upsampled_Set/"
 
 # Define some parameters
 k_fold = 5
@@ -56,14 +57,15 @@ threads = 16
 arch = "ResNet152"
 
 # Define input shape
-resize_shape = (512, 512)
 input_shape = (224, 224)
 
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
 #-----------------------------------------------------#
-path_images = os.path.join(path_riadd, "Training")
-path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
+# path_images = os.path.join(path_riadd, "Training")
+path_images = os.path.join(path_riadd, "images")
+# path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
+path_csv = os.path.join(path_riadd, "data.csv")
 
 # Initialize input data reader
 cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
@@ -114,8 +116,7 @@ aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
                          gaussian_noise=False, gaussian_blur=False,
                          downscaling=False, elastic_transform=False)
 # Define Subfunctions
-sf_list = [Padding(mode="square"), Retinal_Crop(), Resize(resize_shape),
-           Crop(input_shape)]
+sf_list = [Padding(mode="square"), Retinal_Crop()]
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
 
@@ -152,15 +153,15 @@ for i, fold in enumerate(subsets):
 
     # Initialize training and validation Data Generators
     train_gen = DataGenerator(x_train, path_images, labels=y_train,
-                              batch_size=40, img_aug=aug, shuffle=True,
-                              subfunctions=sf_list, resize=None,
+                              batch_size=48, img_aug=aug, shuffle=True,
+                              subfunctions=sf_list, resize=input_shape,
                               standardize_mode=sf_standardize,
                               grayscale=False, prepare_images=False,
                               sample_weights=sample_weights_train, seed=None,
                               image_format=image_format, workers=threads)
-    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=40,
+    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=48,
                             img_aug=None, subfunctions=sf_list, shuffle=False,
-                            standardize_mode=sf_standardize, resize=None,
+                            standardize_mode=sf_standardize, resize=input_shape,
                             grayscale=False, prepare_images=False, seed=None,
                             sample_weights=sample_weights_val,
                             image_format=image_format, workers=threads)
@@ -173,13 +174,13 @@ for i, fold in enumerate(subsets):
     cb_cl = CSVLogger(os.path.join(path_arch, "cv_" + str(i) + ".logs.csv"),
                       separator=',', append=True)
     cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
-                              verbose=1, mode='min', min_lr=1e-6)
-    cb_es = MinEpochEarlyStopping(monitor='val_loss', patience=16, verbose=1,
+                              verbose=1, mode='min', min_lr=1e-7)
+    cb_es = MinEpochEarlyStopping(monitor='val_loss', patience=20, verbose=1,
                                   start_epoch=60)
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=300,
+    model.train(train_gen, val_gen, epochs=150, iterations=250,
                 callbacks=callbacks, transfer_learning=True)
 
     # Dump latest model
