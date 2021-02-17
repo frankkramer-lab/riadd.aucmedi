@@ -93,7 +93,7 @@ img_aug = Image_Augmentation(flip=True, rotate=True, brightness=True,
                              gaussian_noise=False, gaussian_blur=False,
                              downscaling=False, gamma=False, elastic_transform=False)
 # Image Augmentation function
-def perform_augmentation(index_list):
+def perform_augmentation(index_list, pair):
     # Randomly select an index
     ir = np.random.choice(len(index_list), 1, replace=True)
     index = index_list[ir[0]]
@@ -130,12 +130,14 @@ while any(class_freq[c] < N_class for c in class_freq):
     dt, class_freq, labels_pairings, labels_pairings_ohe = analyse_classes(dt)
 
     for j in range(0, N_pair):
+        # Obtain label pairing list
+        wk_list = [(labels_pairings[pair], pair) for pair in labels_pairings]
         # Create augmentated image
-        with ThreadPool(32) as pool:
-            list_newIndicies = pool.map(perform_augmentation,
-                                        [labels_pairings[pair] for pair in labels_pairings])
+        with ThreadPool(92) as pool:
+            list_newIndicies = pool.starmap(perform_augmentation, wk_list)
         # Update data
-        for new_index in list_newIndicies:
+        for i, new_index in enumerate(list_newIndicies):
+            pair = wk_list[i][1]
             new_entry = [new_index] + labels_pairings_ohe[pair]
             dt.loc[len(dt)] = new_entry
             labels_pairings[pair].append(new_index)
