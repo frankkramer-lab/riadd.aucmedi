@@ -31,7 +31,7 @@ from tensorflow.keras.metrics import AUC
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.utils.class_weights import compute_sample_weights
-from aucmedi.data_processing.subfunctions import Padding
+from aucmedi.data_processing.subfunctions import Padding, Crop, Resize
 from aucmedi.sampling import sampling_kfold
 from aucmedi.neural_network.architectures import architecture_dict
 # Custom libraries
@@ -47,15 +47,16 @@ path_riadd = "/storage/riadd2021/Training_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 16
-batch_queue_size = 32
+processes = 8
+batch_queue_size = 16
 threads = 16
 
 # Define architecture which should be processed
 arch = "InceptionV3"
 
 # Define input shape
-input_shape = (512, 512)
+resize_shape = (512, 512)
+input_shape = (224, 224)
 
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
@@ -64,9 +65,9 @@ path_images = os.path.join(path_riadd, "Training")
 path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
 # Initialize input data reader
-cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS", "CSR",
-        "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT", "RT", "RS",
-        "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
+cols = ["Disease_Risk", "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM",
+        "LS", "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
+        "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
 ds = input_interface(interface="csv", path_imagedir=path_images,
                      path_data=path_csv, ohe=True, col_sample="ID",
                      ohe_range=cols)
@@ -112,7 +113,8 @@ aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
                          gaussian_noise=False, gaussian_blur=False,
                          downscaling=False, elastic_transform=False)
 # Define Subfunctions
-sf_list = [Padding(mode="square"), Retinal_Crop()]
+sf_list = [Padding(mode="square"), Retinal_Crop(), Resize(resize_shape),
+           Crop(input_shape)]
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
 
@@ -133,8 +135,7 @@ for i, fold in enumerate(subsets):
     sample_weights_val = compute_sample_weights(ohe_array=y_val)
 
     # Initialize architecture
-    nn_arch = architecture_dict[arch](channels=3,
-                                      input_shape=input_shape)
+    nn_arch = architecture_dict[arch](channels=3, input_shape=input_shape)
 
     # Initialize model
     model = Neural_Network(nclasses, channels=3, architecture=nn_arch,
@@ -150,15 +151,15 @@ for i, fold in enumerate(subsets):
 
     # Initialize training and validation Data Generators
     train_gen = DataGenerator(x_train, path_images, labels=y_train,
-                              batch_size=64, img_aug=aug, shuffle=True,
-                              subfunctions=sf_list, resize=input_shape,
+                              batch_size=40, img_aug=aug, shuffle=True,
+                              subfunctions=sf_list, resize=None,
                               standardize_mode=sf_standardize,
                               grayscale=False, prepare_images=False,
                               sample_weights=sample_weights_train, seed=None,
                               image_format=image_format, workers=threads)
-    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=64,
+    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=40,
                             img_aug=None, subfunctions=sf_list, shuffle=False,
-                            standardize_mode=sf_standardize, resize=input_shape,
+                            standardize_mode=sf_standardize, resize=None,
                             grayscale=False, prepare_images=False, seed=None,
                             sample_weights=sample_weights_val,
                             image_format=image_format, workers=threads)
@@ -176,7 +177,7 @@ for i, fold in enumerate(subsets):
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=200,
+    model.train(train_gen, val_gen, epochs=150, iterations=300,
                 callbacks=callbacks, transfer_learning=True)
 
     # Dump latest model
