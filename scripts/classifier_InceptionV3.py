@@ -62,8 +62,10 @@ input_shape = (224, 224)
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
 #-----------------------------------------------------#
-path_images = os.path.join(path_riadd, "Training")
-path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
+# path_images = os.path.join(path_riadd, "Training")
+path_images = os.path.join(path_riadd, "images")
+# path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
+path_csv = os.path.join(path_riadd, "data.csv")
 
 # Initialize input data reader
 cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
