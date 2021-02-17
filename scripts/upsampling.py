@@ -103,7 +103,7 @@ def perform_augmentation(index_list, pair):
     # Perform augmentation
     img_new = img_aug.apply(img)
     # Generate new index
-    index_new = "aug_" + index + "." + str(uuid.uuid4())
+    index_new = str(uuid.uuid4())
     # Store augmented image to upsampling directory
     path_img = os.path.join(path_images_aug, index_new + ".png")
     pil_im = Image.fromarray(img_new)
