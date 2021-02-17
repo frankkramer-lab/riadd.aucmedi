@@ -25,7 +25,7 @@ import json
 import pandas as pd
 import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, \
-                                       ReduceLROnPlateau, EarlyStopping
+                                       ReduceLROnPlateau
 from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
@@ -34,6 +34,7 @@ from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding, Crop, Resize
 from aucmedi.sampling import sampling_kfold
 from aucmedi.neural_network.architectures import architecture_dict
+from aucmedi.utils.callbacks import MinEpochEarlyStopping
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
@@ -65,9 +66,9 @@ path_images = os.path.join(path_riadd, "Training")
 path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
 
 # Initialize input data reader
-cols = ["Disease_Risk", "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM",
-        "LS", "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
-        "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
+cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
+        "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT",
+        "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
 ds = input_interface(interface="csv", path_imagedir=path_images,
                      path_data=path_csv, ohe=True, col_sample="ID",
                      ohe_range=cols)
@@ -173,7 +174,8 @@ for i, fold in enumerate(subsets):
                       separator=',', append=True)
     cb_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8,
                               verbose=1, mode='min', min_lr=1e-6)
-    cb_es = EarlyStopping(monitor='val_loss', patience=32, verbose=1)
+    cb_es = MinEpochEarlyStopping(monitor='val_loss', patience=16, verbose=1,
+                                  start_epoch=60)
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
