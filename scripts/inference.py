@@ -114,7 +114,7 @@ for arch in architectures:
             print("Skipping model:", arch, str(i))
 
         # Use fitted model for predictions
-        preds = model.predict(test_gen)
+        preds = model.predict(pred_gen)
         # Create prediction dataset
         df_index = pd.DataFrame(data={"ID": index_list})
         df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
