@@ -153,13 +153,13 @@ for i, fold in enumerate(subsets):
 
     # Initialize training and validation Data Generators
     train_gen = DataGenerator(x_train, path_images, labels=y_train,
-                              batch_size=32, img_aug=aug, shuffle=True,
+                              batch_size=24, img_aug=aug, shuffle=True,
                               subfunctions=sf_list, resize=input_shape,
                               standardize_mode=sf_standardize,
                               grayscale=False, prepare_images=False,
                               sample_weights=sample_weights_train, seed=None,
                               image_format=image_format, workers=threads)
-    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=32,
+    val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=24,
                             img_aug=None, subfunctions=sf_list, shuffle=False,
                             standardize_mode=sf_standardize, resize=input_shape,
                             grayscale=False, prepare_images=False, seed=None,
