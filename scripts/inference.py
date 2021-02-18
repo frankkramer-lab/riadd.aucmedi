@@ -30,6 +30,7 @@ from tensorflow.keras.metrics import AUC
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.data_processing.subfunctions import Padding
+from aucmedi.ensembler import predict_augmenting
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
