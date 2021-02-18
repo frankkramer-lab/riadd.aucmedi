@@ -23,6 +23,7 @@
 import os
 import json
 import pandas as pd
+from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode

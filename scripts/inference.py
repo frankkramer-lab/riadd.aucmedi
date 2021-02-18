@@ -23,8 +23,6 @@
 import os
 import json
 import pandas as pd
-from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, \
-                                       ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
