@@ -81,7 +81,6 @@ activation_output = "sigmoid"
 #-----------------------------------------------------#
 #        AUCMEDI Classifier Inference for RIADD       #
 #-----------------------------------------------------#
-# Run a k-fold CV for each architecture
 for arch in architectures:
     path_arch = os.path.join(path_models, arch)
     # Iterate over each fold of the CV

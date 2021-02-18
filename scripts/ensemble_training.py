@@ -37,7 +37,7 @@ from retinal_crop import Retinal_Crop
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 # Provide path to imaging data
-path_riadd = "/storage/riadd2021/Training_Set/"
+path_riadd = "/storage/riadd2021/Upsampled_Set/"
 
 # Define some parameters
 k_fold = 5
@@ -54,8 +54,8 @@ input_shape = (224, 224)
 #-----------------------------------------------------#
 #          AUCMEDI Inference Setup for RIADD          #
 #-----------------------------------------------------#
-path_images = os.path.join(path_riadd, "Training")
-path_csv = os.path.join(path_riadd, "RFMiD_Training_Labels.csv")
+path_images = os.path.join(path_riadd, "images")
+path_csv = os.path.join(path_riadd, "data.csv")
 
 # Initialize input data reader
 cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
