@@ -110,7 +110,7 @@ for arch in architectures:
             print("Skipping model:", arch, str(i))
 
         # Apply Inference Augmenting
-        preds = predict_augmenting(model, index_list, path_riadd, n_cycles=5,
+        preds = predict_augmenting(model, index_list, path_images, n_cycles=5,
                                    img_aug=aug, aggregate="mean",
                                    image_format=image_format, batch_size=32,
                                    resize=input_shape, grayscale=False,
