@@ -75,6 +75,9 @@ path_models = os.path.join("models")
 # Define Subfunctions
 sf_list = [Padding(mode="square"), Retinal_Crop()]
 
+# Set activation output to sigmoid for multi-label classification
+activation_output = "sigmoid"
+
 # Initialize Image Augmentation
 aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
                          saturation=False, hue=False, scale=False, crop=False,
