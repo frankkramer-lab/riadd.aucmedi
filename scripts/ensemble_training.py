@@ -21,9 +21,11 @@
 #-----------------------------------------------------#
 # External libraries
 import os
-import json
 import pandas as pd
+import pickle
 from tensorflow.keras.metrics import AUC
+# Sklearn libraries
+from sklearn.ensemble import RandomForestClassifier
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
@@ -38,7 +40,8 @@ from retinal_crop import Retinal_Crop
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 # Provide path to imaging data
-path_riadd = "/storage/riadd2021/Upsampled_Set/"
+# path_riadd = "/storage/riadd2021/Upsampled_Set/"
+path_riadd = "/home/mudomini/data/RIADD/Upsampled_Set/"
 
 # Define some parameters
 k_fold = 5
@@ -73,71 +76,98 @@ if not os.path.exists(path_res) : os.mkdir(path_res)
 # Obtain model directory
 path_models = os.path.join("models")
 
-# Define Subfunctions
-sf_list = [Padding(mode="square"), Retinal_Crop()]
+# # Define Subfunctions
+# sf_list = [Padding(mode="square"), Retinal_Crop()]
+#
+# # Set activation output to sigmoid for multi-label classification
+# activation_output = "sigmoid"
+#
+# # Initialize Image Augmentation
+# aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
+#                          saturation=False, hue=False, scale=False, crop=False,
+#                          grid_distortion=False, compression=False, gamma=False,
+#                          gaussian_noise=False, gaussian_blur=False,
+#                          downscaling=False, elastic_transform=False)
+#
+# # Iterate over each architecture
+# for arch in architectures:
+#     path_arch = os.path.join(path_models, arch)
+#     # Iterate over each fold of the CV
+#     for i in range(0, k_fold):
+#         # Initialize model
+#         model = Neural_Network(nclasses, channels=3, architecture=arch,
+#                                workers=processes,
+#                                batch_queue_size=batch_queue_size,
+#                                activation_output=activation_output,
+#                                loss="binary_crossentropy",
+#                                metrics=["binary_accuracy", AUC(100)],
+#                                pretrained_weights=True, multiprocessing=True)
+#
+#         # Obtain standardization mode for current architecture
+#         sf_standardize = supported_standardize_mode[arch]
+#
+#         # Load best model
+#         path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
+#         if os.path.exists(path_cv_model) : model.load(path_cv_model)
+#         else:
+#             print("Skipping model:", arch, str(i))
+#
+#         # Apply Inference Augmenting
+#         preds = predict_augmenting(model, index_list, path_images, n_cycles=5,
+#                                    img_aug=aug, aggregate="mean",
+#                                    image_format=image_format, batch_size=64,
+#                                    resize=input_shape, grayscale=False,
+#                                    subfunctions=sf_list, seed=None,
+#                                    standardize_mode=sf_standardize,
+#                                    workers=threads)
+#
+#         # Create prediction dataset
+#         df_index = pd.DataFrame(data={"ID": index_list})
+#         df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
+#         df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
+#         df_merged.sort_values(by=["ID"], inplace=True)
+#         # Store predictions to disk
+#         df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
+#                                       ".ensemble_train.predictions.csv"),
+#                          index=False)
+#
+#         # Garbage collection
+#         del model
 
-# Set activation output to sigmoid for multi-label classification
-activation_output = "sigmoid"
+#-----------------------------------------------------#
+#         AUCMEDI Ensemble Training for RIADD         #
+#-----------------------------------------------------#
+# Iterate over all ensemble learning preidctions
+dt_pred = None
+for pred_file in sorted(os.listdir(path_res)):
+    if not pred_file.split(".")[2] == "ensemble_train" : continue
+    # Load label prediction
+    pred = pd.read_csv(os.path.join(path_res, pred_file), sep=",", header=0)
+    # Rename columns
+    prefix = ".".join(pred_file.split(".")[0:2])
+    label_cols = list(pred.columns[1:])
+    label_cols = [prefix + "." + label.lstrip("pd_") for label in label_cols] # Remove lstrip later if predictions are re-computed
+    pred.columns = ["ID"] + label_cols
+    # Merge predictions
+    if dt_pred is None : dt_pred = pred
+    else : dt_pred = dt_pred.merge(pred, on="ID")
 
-# Initialize Image Augmentation
-aug = Image_Augmentation(flip=True, rotate=True, brightness=True, contrast=True,
-                         saturation=False, hue=False, scale=False, crop=False,
-                         grid_distortion=False, compression=False, gamma=False,
-                         gaussian_noise=False, gaussian_blur=False,
-                         downscaling=False, elastic_transform=False)
+# Obtain features and labels for ML model
+df_index = pd.DataFrame(data={"ID": index_list})
+dt_gt = pd.DataFrame(class_ohe, columns=["gt_" + s for s in cols])
+df_merged = pd.concat([df_index, dt_gt], axis=1, sort=False)
+data = dt_pred.merge(df_merged, on="ID")
 
-# Iterate over each architecture
-for arch in architectures:
-    path_arch = os.path.join(path_models, arch)
-    # Iterate over each fold of the CV
-    for i in range(0, k_fold):
-        # Initialize model
-        model = Neural_Network(nclasses, channels=3, architecture=arch,
-                               workers=processes,
-                               batch_queue_size=batch_queue_size,
-                               activation_output=activation_output,
-                               loss="binary_crossentropy",
-                               metrics=["binary_accuracy", AUC(100)],
-                               pretrained_weights=True, multiprocessing=True)
+features = data.drop(["gt_" + s for s in cols] + ["ID"], axis=1).to_numpy()
+labels = data[["gt_" + s for s in cols]].to_numpy()
 
-        # Obtain standardization mode for current architecture
-        sf_standardize = supported_standardize_mode[arch]
+# Train Random Forest model
+ml_model = RandomForestClassifier()
+ml_model.fit(features, labels)
 
-        # Load best model
-        path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
-        if os.path.exists(path_cv_model) : model.load(path_cv_model)
-        else:
-            print("Skipping model:", arch, str(i))
+# Store model to disk
+path_mldir = os.path.join(path_models, "ensemble")
+if not os.path.exists(path_mldir) : os.mkdir(path_mldir)
 
-        # Apply Inference Augmenting
-        preds = predict_augmenting(model, index_list, path_images, n_cycles=5,
-                                   img_aug=aug, aggregate="mean",
-                                   image_format=image_format, batch_size=32,
-                                   resize=input_shape, grayscale=False,
-                                   subfunctions=sf_list, seed=None,
-                                   standardize_mode=sf_standardize,
-                                   workers=threads)
-
-        # Create prediction dataset
-        df_index = pd.DataFrame(data={"ID": index_list})
-        df_pd = pd.DataFrame(data=preds, columns=["pd_" + s for s in cols])
-        df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
-        df_merged.sort_values(by=["ID"], inplace=True)
-        # Store predictions to disk
-        df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
-                                      ".ensemble_train.predictions.csv"),
-                         index=False)
-
-        # Garbage collection
-        del model
-
-
-
-
-# df_gt = pd.DataFrame(data=class_ohe, columns=["gt_" + s for s in cols])
-
-# load over each model
-# make a prediction for complete dataset
-# store in ensemble
-# train RF/LR/SVM on data to predict final results
-# output final results
+with open(os.path.join(path_mldir, "labels.rf.pickle"), "wb") as pickle_writer:
+    pickle.dump(ml_model, pickle_writer, protocol=pickle.HIGHEST_PROTOCOL)

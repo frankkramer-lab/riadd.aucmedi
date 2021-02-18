@@ -97,7 +97,7 @@ for arch in architectures:
 
         # Initialize Data Generator for prediction
         pred_gen = DataGenerator(index_list, path_riadd, labels=None,
-                                 batch_size=32, img_aug=None,
+                                 batch_size=64, img_aug=None,
                                  subfunctions=sf_list,
                                  standardize_mode=sf_standardize,
                                  shuffle=False, resize=input_shape,
@@ -126,7 +126,7 @@ for arch in architectures:
         # Apply Inference Augmenting
         preds = predict_augmenting(model, index_list, path_riadd, n_cycles=20,
                                    img_aug=None, aggregate="mean",
-                                   image_format=image_format, batch_size=32,
+                                   image_format=image_format, batch_size=64,
                                    resize=input_shape, grayscale=False,
                                    subfunctions=sf_list, seed=None,
                                    standardize_mode=sf_standardize, workers=threads)
