@@ -29,27 +29,29 @@ from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
-from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
-from aucmedi.sampling import sampling_kfold
+# Custom libraries
+from retinal_crop import Retinal_Crop
 
 #-----------------------------------------------------#
 #                   Configurations                    #
 #-----------------------------------------------------#
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 # Provide pathes to imaging data
-path_riadd = "/storage/riadd2021/Training_Set/"
+path_riadd = "/storage/riadd2021/Evaluation_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 50
-batch_queue_size = 75
-threads = 8
+processes = 8
+batch_queue_size = 16
+threads = 16
 
 # Define architectures which should be processed
-architectures = ["VGG16", "DenseNet169", "ResNet101", "ResNet152", "EfficientNetB4",
-                 "ResNeXt101", "InceptionResNetV2"]
+architectures = ["DenseNet201", "ResNet152", "InceptionV3"]
+
+# Define input shape
+input_shape = (224, 224)
 
 #-----------------------------------------------------#
 #          AUCMEDI Classifier Setup for RIADD         #
@@ -70,7 +72,7 @@ if not os.path.exists(path_res) : os.mkdir(path_res)
 path_models = os.path.join("models")
 
 # Define Subfunctions
-sf_list = [Padding(mode="square")]
+sf_list = [Padding(mode="square"), Retinal_Crop()]
 
 # Set activation output to sigmoid for multi-label classification
 activation_output = "sigmoid"
@@ -94,8 +96,6 @@ for arch in architectures:
 
         # Obtain standardization mode for current architecture
         sf_standardize = supported_standardize_mode[arch]
-        # Obtain standard input shape for current architecture
-        input_shape = model.input_shape[:-1]
 
         # Initialize Data Generator for prediction
         pred_gen = DataGenerator(index_list, path_riadd, labels=None,
@@ -105,23 +105,24 @@ for arch in architectures:
                                  shuffle=False, resize=input_shape,
                                  grayscale=False, prepare_images=False,
                                  sample_weights=None, seed=None,
-                                 image_format=image_format, workers=8)
+                                 image_format=image_format, workers=threads)
 
         # Load best model
         path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
-        model.load(path_cv_model)
+        if os.path.exists(path_cv_model) : model.load(path_cv_model)
+        else:
+            print("Skipping model:", arch, str(i))
 
         # Use fitted model for predictions
         preds = model.predict(test_gen)
         # Create prediction dataset
         df_index = pd.DataFrame(data={"ID": index_list})
-        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
         df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
-        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
+        df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
         df_merged.sort_values(by=["ID"], inplace=True)
         # Store predictions to disk
         df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
-                                      ".simple.predictions.csv"),
+                                      ".labels.simple.predictions.csv"),
                          index=False)
 
         # Apply Inference Augmenting
@@ -130,34 +131,15 @@ for arch in architectures:
                                    image_format=image_format, batch_size=32,
                                    resize=input_shape, grayscale=False,
                                    subfunctions=sf_list, seed=None,
-                                   standardize_mode=sf_standardize, workers=8)
+                                   standardize_mode=sf_standardize, workers=threads)
         # Create prediction dataset
         df_index = pd.DataFrame(data={"ID": index_list})
-        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
         df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
-        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
+        df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
         df_merged.sort_values(by=["ID"], inplace=True)
         # Store predictions to disk
         df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
-                                      ".augmenting_mean.predictions.csv"),
-                         index=False)
-
-        # Apply Inference Augmenting
-        preds = predict_augmenting(model, index_list, path_riadd, n_cycles=20,
-                                   img_aug=None, aggregate="softmax",
-                                   image_format=image_format, batch_size=32,
-                                   resize=input_shape, grayscale=False,
-                                   subfunctions=sf_list, seed=None,
-                                   standardize_mode=sf_standardize, workers=8)
-        # Create prediction dataset
-        df_index = pd.DataFrame(data={"ID": index_list})
-        df_dr = pd.DataFrame(data={"Disease_Risk": [0] * len(index_list)})
-        df_pd = pd.DataFrame(data=preds, columns=[s for s in cols])
-        df_merged = pd.concat([df_index, df_dr, df_pd], axis=1, sort=False)
-        df_merged.sort_values(by=["ID"], inplace=True)
-        # Store predictions to disk
-        df_merged.to_csv(os.path.join(path_res, arch + "." + "cv_" + str(i) + \
-                                      ".augmenting_softmax.predictions.csv"),
+                                      ".labels.augmenting_mean.predictions.csv"),
                          index=False)
 
         # Garbage collection
