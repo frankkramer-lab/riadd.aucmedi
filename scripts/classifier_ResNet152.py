@@ -124,7 +124,7 @@ activation_output = "sigmoid"
 #        AUCMEDI Classifier Training for RIADD        #
 #-----------------------------------------------------#
 # Create architecture directory
-path_arch = os.path.join(path_models, arch)
+path_arch = os.path.join(path_models, "classifier_" + arch)
 if not os.path.exists(path_arch) : os.mkdir(path_arch)
 
 # Iterate over each fold of the CV

@@ -122,7 +122,7 @@ activation_output = "softmax"
 #        AUCMEDI Classifier Training for RIADD        #
 #-----------------------------------------------------#
 # Create detector directory
-path_detect = os.path.join(path_models, "detector")
+path_detect = os.path.join(path_models, "detector_" + arch)
 if not os.path.exists(path_detect) : os.mkdir(path_detect)
 
 # Iterate over each fold of the CV
