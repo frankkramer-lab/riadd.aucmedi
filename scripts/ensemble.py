@@ -27,16 +27,24 @@ import pickle
 #-----------------------------------------------------#
 #                   Configurations                    #
 #-----------------------------------------------------#
+# Define mode of predictions to utilize
+# ["simple", "augmenting"]
+mode = "simple"
+
 # Provide pathes to prediction data
 path_preds = "preds"
 
-#-----------------------------------------------------#
-#              AUCMEDI Ensemble for RIADD             #
-#-----------------------------------------------------#
-cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
-        "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT",
-        "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
+# Provide path to ensemble model directory
+path_modeldir = os.path.join("models", "ensemble")
 
+# Define label columns
+cols = ["Disease_Risk", "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM",
+        "LS", "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
+        "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
+
+# #-----------------------------------------------------#
+# #            Ensemble Learning: Averaging             #
+# #-----------------------------------------------------#
 # # Iterate over all label preidctions
 # dt_pred = pd.DataFrame([])
 # for pred_file in os.listdir(path_preds):
@@ -49,17 +57,20 @@ cols = ["DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
 #
 # # Compute mean
 # dt_pred = dt_pred.groupby("ID").mean()
+#
 
-
-# Iterate over all ensemble learning preidctions
+#-----------------------------------------------------#
+#             Ensemble Learning: Stacking             #
+#-----------------------------------------------------#
+# Iterate over the predictions from all models (detector & classifier)
 dt_pred = None
 for pred_file in sorted(os.listdir(path_preds)):
-    if not pred_file.split(".")[2] == "labels" : continue
-    if not pred_file.split(".")[3] == "simple" : continue
+    if not pred_file.split(".")[3] == "inference" : continue
+    if not pred_file.split(".")[4] == mode : continue
     # Load label prediction
     pred = pd.read_csv(os.path.join(path_preds, pred_file), sep=",", header=0)
     # Rename columns
-    prefix = ".".join(pred_file.split(".")[0:2])
+    prefix = ".".join(pred_file.split(".")[0:3])
     label_cols = list(pred.columns[1:])
     label_cols = [prefix + "." + label for label in label_cols]
     pred.columns = ["ID"] + label_cols
@@ -70,26 +81,30 @@ for pred_file in sorted(os.listdir(path_preds)):
 # Obtain features table
 features = dt_pred.drop("ID", axis=1).to_numpy()
 
-# Load random forest model
-path_model = os.path.join("models", "ensemble", "labels.rf.pickle")
-with open(path_model, "rb") as pickle_reader:
-    model = pickle.load(pickle_reader)
+# Apply Logistic Regression and Random Forest Inference
+for ml in ["lr", "rf"]:
+    # Iterate over each class
+    preds_list = []
+    for c in cols:
+        # Load machine learning model
+        path_model = os.path.join(path_modeldir,
+                                  "model_" + ml + "." + c + ".pickle")
+        with open(path_model, "rb") as pickle_reader:
+            model = pickle.load(pickle_reader)
+        # Compute predictions utilizing the fitted machine learning model
+        preds = model.predict_proba(features)
+        # Parse predictions and add to cache
+        df = pd.DataFrame(data={c: preds[:, 1]})
+        preds_list.append(df)
+    # Concat cached predictions together
+    preds_final = pd.concat([dt_pred["ID"]] + preds_list, axis=1, sort=False)
 
-# Run predictions using the RF model
-preds = model.predict_proba(features)
+    # Clean up results and create submission result
+    preds_final = preds_final[["ID"] + cols]
+    preds_final.ID = preds_final.ID.astype(float)
+    preds_final = preds_final.sort_values("ID")
 
-# Extract probabilities
-preds_list = []
-for i, p in enumerate(preds):
-    df = pd.DataFrame(data={cols[i]: p[:, 1]})
-    preds_list.append(df)
-preds_final = pd.concat([dt_pred["ID"]] + preds_list, axis=1, sort=False)
-
-# Create submission result
-preds_final["Disease_Risk"] = 0
-preds_final = preds_final[["ID", "Disease_Risk"] + cols]
-preds_final.ID = preds_final.ID.astype(float)
-preds_final = preds_final.sort_values("ID")
-
-# Export
-preds_final.to_csv("MISIT_results.csv", index=False)
+    # Export to disk
+    path_results = os.path.join(path_preds, "ensemble.inference." + mode + \
+                                "." + ml + ".csv")
+    preds_final.to_csv(path_results, index=False)
