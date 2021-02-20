@@ -138,8 +138,8 @@ for i, fold in enumerate(subsets):
                            workers=processes,
                            batch_queue_size=batch_queue_size,
                            activation_output=activation_output,
-                           loss="binary_crossentropy",
-                           metrics=["binary_accuracy", AUC(100)],
+                           loss="categorical_crossentropy",
+                           metrics=["categorical_accuracy", AUC(100)],
                            pretrained_weights=True, multiprocessing=True)
 
     # Obtain standardization mode for current architecture
