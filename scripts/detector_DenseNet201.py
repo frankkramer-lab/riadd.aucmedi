@@ -30,12 +30,12 @@ from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
-from aucmedi.utils.class_weights import compute_sample_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_kfold
 from aucmedi.neural_network.architectures import architecture_dict
 from aucmedi.utils.callbacks import MinEpochEarlyStopping
 from aucmedi.utils.class_weights import compute_class_weights
+from aucmedi.neural_network.loss_functions import categorical_focal_loss
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
@@ -133,12 +133,15 @@ for i, fold in enumerate(subsets):
     # Initialize architecture
     nn_arch = architecture_dict[arch](channels=3, input_shape=input_shape)
 
+    # Compute classweights
+    class_weights, _ = compute_class_weights(y_train)
+
     # Initialize model
     model = Neural_Network(nclasses, channels=3, architecture=nn_arch,
                            workers=processes,
                            batch_queue_size=batch_queue_size,
                            activation_output=activation_output,
-                           loss="categorical_crossentropy",
+                           loss=categorical_focal_loss(class_weights),
                            metrics=["categorical_accuracy", AUC(100)],
                            pretrained_weights=True, multiprocessing=True)
     # Modify number of transfer learning epochs with frozen model layers
@@ -175,13 +178,9 @@ for i, fold in enumerate(subsets):
                                   start_epoch=60)
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
-    # Compute classweights
-    class_weights = compute_class_weights(y_train)
-
     # Train model
     model.train(train_gen, val_gen, epochs=300, iterations=250,
-                callbacks=callbacks, transfer_learning=True,
-                class_weights=class_weights)
+                callbacks=callbacks, transfer_learning=True)
 
     # Dump latest model
     model.dump(os.path.join(path_detect, "cv_" + str(i) + ".model.last.hdf5"))
