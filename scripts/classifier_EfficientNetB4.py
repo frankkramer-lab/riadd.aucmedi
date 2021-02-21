@@ -30,11 +30,12 @@ from tensorflow.keras.metrics import AUC
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
-from aucmedi.utils.class_weights import compute_sample_weights
+from aucmedi.utils.class_weights import compute_multilabel_weights
 from aucmedi.data_processing.subfunctions import Padding
 from aucmedi.sampling import sampling_kfold
 from aucmedi.neural_network.architectures import architecture_dict
 from aucmedi.utils.callbacks import MinEpochEarlyStopping
+from aucmedi.neural_network.loss_functions import multilabel_focal_loss
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
@@ -132,9 +133,8 @@ for i, fold in enumerate(subsets):
     # Obtain data samplings
     (x_train, y_train, x_val, y_val) = fold
 
-    # Compute sample weights
-    sample_weights_train = compute_sample_weights(ohe_array=y_train)
-    sample_weights_val = compute_sample_weights(ohe_array=y_val)
+    # Compute class weights
+    class_weights = compute_multilabel_weights(ohe_array=y_train)
 
     # Initialize architecture
     nn_arch = architecture_dict[arch](channels=3, input_shape=input_shape)
@@ -144,7 +144,7 @@ for i, fold in enumerate(subsets):
                            workers=processes,
                            batch_queue_size=batch_queue_size,
                            activation_output=activation_output,
-                           loss="binary_crossentropy",
+                           loss=multilabel_focal_loss(class_weights),
                            metrics=["binary_accuracy", AUC(100)],
                            pretrained_weights=True, multiprocessing=True)
     # Modify number of transfer learning epochs with frozen model layers
@@ -159,13 +159,13 @@ for i, fold in enumerate(subsets):
                               subfunctions=sf_list, resize=input_shape,
                               standardize_mode=sf_standardize,
                               grayscale=False, prepare_images=False,
-                              sample_weights=sample_weights_train, seed=None,
+                              sample_weights=None, seed=None,
                               image_format=image_format, workers=threads)
     val_gen = DataGenerator(x_val, path_images, labels=y_val, batch_size=24,
                             img_aug=None, subfunctions=sf_list, shuffle=False,
                             standardize_mode=sf_standardize, resize=input_shape,
                             grayscale=False, prepare_images=False, seed=None,
-                            sample_weights=sample_weights_val,
+                            sample_weights=None,
                             image_format=image_format, workers=threads)
 
     # Define callbacks
