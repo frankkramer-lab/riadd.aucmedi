@@ -179,7 +179,7 @@ for i, fold in enumerate(subsets):
     class_weights = compute_class_weights(y_train)
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=300,
+    model.train(train_gen, val_gen, epochs=300, iterations=250,
                 callbacks=callbacks, transfer_learning=True,
                 class_weights=class_weights)
 

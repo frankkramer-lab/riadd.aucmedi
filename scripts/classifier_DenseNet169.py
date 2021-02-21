@@ -182,7 +182,7 @@ for i, fold in enumerate(subsets):
     callbacks = [cb_mc, cb_cl, cb_lr, cb_es]
 
     # Train model
-    model.train(train_gen, val_gen, epochs=150, iterations=300,
+    model.train(train_gen, val_gen, epochs=300, iterations=250,
                 callbacks=callbacks, transfer_learning=True)
 
     # Dump latest model
