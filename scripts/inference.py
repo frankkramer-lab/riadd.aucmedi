@@ -222,7 +222,7 @@ for model_subdir in os.listdir(path_models):
                          index=False)
 
         # Run Inference Augmenting
-        preds = predict_augmenting(model, index_list, path_images, n_cycles=20,
+        preds = predict_augmenting(model, index_list, path_riadd, n_cycles=20,
                                    img_aug=aug, aggregate="mean",
                                    image_format=image_format, batch_size=64,
                                    resize=input_shape, grayscale=False,
