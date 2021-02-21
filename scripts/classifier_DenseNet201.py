@@ -147,6 +147,8 @@ for i, fold in enumerate(subsets):
                            loss="binary_crossentropy",
                            metrics=["binary_accuracy", AUC(100)],
                            pretrained_weights=True, multiprocessing=True)
+    # Modify number of transfer learning epochs with frozen model layers
+    model.tf_epochs = 10
 
     # Obtain standardization mode for current architecture
     sf_standardize = supported_standardize_mode[arch]
