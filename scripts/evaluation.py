@@ -225,7 +225,7 @@ dt_auroc = pd.DataFrame(list_auroc, columns=["model", "architecture", "fold",
 dt_roc = pd.concat(list_roc, axis=0, sort=False)
 
 # Define a labeller function
-def label_function(label):
+def label_function_individual(label):
     label = label.replace("classifier", "Classifier : ")
     label = label.replace("detector", "Detector : ")
     label = label.replace("ensemble", "Ensembler : ")
@@ -248,7 +248,7 @@ fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
            + geom_abline(intercept=0, slope=1, color="black",
                          linetype="dashed")
            + ggtitle("Model Performance Overview")
-           + facet_wrap("model + architecture + fold", labeller=label_function)
+           + facet_wrap("model + architecture + fold", labeller=label_function_individual)
            + xlab("False Positive Rate")
            + ylab("True Positive Rate")
            + scale_x_continuous(limits=[0, 1])
@@ -259,12 +259,25 @@ fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
 fig.save(filename="plot.ROC.png", path="./", width=60, height=20, dpi=200,
          limitsize=False)
 
+# Define a labeller function
+def label_function_smoothed(label):
+    label = label.replace("classifier", "Classifier : ")
+    label = label.replace("detector", "Detector : ")
+    label = label.replace("ensemble", "Ensembler : ")
+    label = label.replace("EfficientNetB4", "EfficientNetB4")
+    label = label.replace("DenseNet201", "DenseNet201")
+    label = label.replace("ResNet152", "ResNet152")
+    label = label.replace("InceptionV3", "InceptionV3")
+    label = label.replace("RandomForest", "Random Forest")
+    label = label.replace("LogisticRegression", "Logistic Regression")
+    return label
+
 fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
            + geom_smooth(method="gpr", size=1.5)
            + geom_abline(intercept=0, slope=1, color="black",
                          linetype="dashed")
            + ggtitle("Model Performance Overview")
-           + facet_wrap("model + architecture", labeller=label_function, ncol=4, nrow=2)
+           + facet_wrap("model + architecture", labeller=label_function_smoothed, ncol=4, nrow=2)
            + xlab("False Positive Rate")
            + ylab("True Positive Rate")
            + scale_x_continuous(limits=[0, 1])
