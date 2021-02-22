@@ -42,8 +42,8 @@ path_riadd = "/storage/riadd2021/Evaluation_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 8
-batch_queue_size = 16
+processes = 64
+batch_queue_size = 128
 threads = 16
 
 # Define label columns
@@ -101,7 +101,7 @@ for model_subdir in os.listdir(path_models):
                                activation_output=activation_output,
                                loss="binary_crossentropy",
                                metrics=["binary_accuracy", AUC(100)],
-                               pretrained_weights=True, multiprocessing=True)
+                               pretrained_weights=True, multiprocessing=False)
 
         # Obtain standardization mode for current architecture
         sf_standardize = supported_standardize_mode[arch]
@@ -185,7 +185,7 @@ for model_subdir in os.listdir(path_models):
                                activation_output=activation_output,
                                loss="categorical_crossentropy",
                                metrics=["categorical_accuracy", AUC(100)],
-                               pretrained_weights=True, multiprocessing=True)
+                               pretrained_weights=True, multiprocessing=False)
 
         # Obtain standardization mode for current architecture
         sf_standardize = supported_standardize_mode[arch]

@@ -50,8 +50,8 @@ path_riadd = "/storage/riadd2021/Upsampled_Set/"
 
 # Define some parameters
 k_fold = 5
-processes = 8
-batch_queue_size = 16
+processes = 64
+batch_queue_size = 128
 threads = 16
 
 # Define architecture which should be processed
@@ -146,7 +146,7 @@ for i, fold in enumerate(subsets):
                            activation_output=activation_output,
                            loss=multilabel_focal_loss(class_weights),
                            metrics=["binary_accuracy", AUC(100)],
-                           pretrained_weights=True, multiprocessing=True)
+                           pretrained_weights=True, multiprocessing=False)
     # Modify number of transfer learning epochs with frozen model layers
     model.tf_epochs = 10
 
