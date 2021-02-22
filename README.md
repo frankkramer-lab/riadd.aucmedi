@@ -1,4 +1,4 @@
-# MULTI-DISEASE DETECTION IN RETINAL IMAGING BASED ON ENSEMBLING HETEROGENEOUS DEEP LEARNING MODELS
+# Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models
 
 Participation at the Retinal Image Analysis for multi-Disease Detection Challenge
 
