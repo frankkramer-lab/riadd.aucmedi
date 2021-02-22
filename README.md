@@ -1,4 +1,4 @@
-# Fully Automated Mutli-Label Disease Classification for Retinal Imaging based on Deep Convolutional Neural Networks and Ensemble Learning
+# MULTI-DISEASE DETECTION IN RETINAL IMAGING BASED ON ENSEMBLING HETEROGENEOUS DEEP LEARNING MODELS
 
 Participation at the Retinal Image Analysis for multi-Disease Detection Challenge
 
