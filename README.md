@@ -71,7 +71,7 @@ This pipeline was based on AUCMEDI, which is an in-house developed open-source f
 
 todo
 
-![fig_results](docs/plot.ROC.png)
+![fig_results](docs/plot.ROC.cv_macroavg.png)
 
 ## Author
 
