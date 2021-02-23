@@ -47,6 +47,9 @@ cols = ["Disease_Risk", "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM",
         "LS", "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
         "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "OTHER"]
 
+# Define number of cross-validation folds
+k_fold = 5
+
 #-----------------------------------------------------#
 #                 Plot fitting curve                  #
 #-----------------------------------------------------#
@@ -168,7 +171,6 @@ for c in cols:
 with open(os.path.join(path_models, "sampling.json"), "r") as json_reader:
     sampling_dict = json.load(json_reader)
 subsets = []
-k_fold = 5
 for i in range(0, k_fold):
     fold = "cv_" + str(i)
     x_train = np.array(sampling_dict[fold]["x_train"])
@@ -259,6 +261,29 @@ fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
 fig.save(filename="plot.ROC.png", path="./", width=60, height=20, dpi=200,
          limitsize=False)
 
+# Macro-Average AUROC scores
+def macro_average_roc(group):
+    # First aggregate all false positive rates
+    all_fpr = np.unique(group["fpr"])
+    mean_tpr = np.zeros_like(all_fpr)
+
+    # Then interpolate all ROC curves at this points
+    fpr_list = [group[group["fold"]=="cv_" + str(i)]["fpr"] for i in range(k_fold)]
+    tpr_list = [group[group["fold"]=="cv_" + str(i)]["tpr"] for i in range(k_fold)]
+    for i in range(k_fold):
+        mean_tpr += np.interp(all_fpr, fpr_list[i], tpr_list[i])
+
+    # Finally average it and compute AUC
+    mean_tpr /= k_fold
+    fpr = all_fpr
+    tpr = mean_tpr
+
+    # Return resulting macro-averaged auroc scores
+    return pd.DataFrame({"fpr": fpr, "tpr": tpr})
+
+dt_roc_avg = dt_roc.groupby(["model", "architecture", "class"]).apply(macro_average_roc)
+dt_roc_avg.reset_index(inplace=True, level=[0,1,2])
+
 # Define a labeller function
 def label_function_smoothed(label):
     label = label.replace("classifier", "Classifier : ")
@@ -272,8 +297,8 @@ def label_function_smoothed(label):
     label = label.replace("LogisticRegression", "Logistic Regression")
     return label
 
-fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
-           + geom_smooth(method="gpr", size=1.5)
+fig = (ggplot(dt_roc_avg, aes("fpr", "tpr", color="class"))
+           + geom_line(size=1.5)
            + geom_abline(intercept=0, slope=1, color="black",
                          linetype="dashed")
            + ggtitle("Model Performance Overview")
@@ -285,7 +310,7 @@ fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
            + scale_color_discrete(name="Classification")
            + theme_bw(base_size=28))
 # Store figure to disk
-fig.save(filename="plot.ROC.cv_smoothed.png", path="./", width=50, height=20, dpi=200,
+fig.save(filename="plot.ROC.cv_macroavg.png", path="./", width=50, height=20, dpi=200,
          limitsize=False)
 
 # Store complete evaluation data to disk
