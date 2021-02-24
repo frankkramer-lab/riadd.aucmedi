@@ -28,7 +28,7 @@ from plotnine import *
 # Sklearn libraries
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import roc_auc_score, roc_curve, average_precision_score
 # AUCMEDI libraries
 from aucmedi import input_interface
 
@@ -146,8 +146,8 @@ df_merged = pd.concat([df_index, dt_gt], axis=1, sort=False)
 data = dt_pred.merge(df_merged, on="ID")
 dt_pred = data.drop(["gt_" + s for s in cols], axis=1)
 
-# Compute ROC & AUROC for each class (classifier & detector)
-list_auroc = []
+# Compute scores for each class (classifier & detector)
+list_scores = []
 list_roc = []
 for c in cols:
     c_gt = data["gt_" + c]
@@ -155,9 +155,10 @@ for c in cols:
         if not k.endswith(c) : continue
         ks = k.split(".")
         c_pd = dt_pred[k]
-        # Compute AUROC
+        # Compute AUROC and mAP
         auc = roc_auc_score(c_gt, c_pd)
-        list_auroc.append([ks[0], ks[1], ks[2], ks[3], auc])
+        mAP = average_precision_score(c_gt, c_pd, average="macro")
+        list_scores.append([ks[0], ks[1], ks[2], ks[3], auc, mAP])
         # Compute ROC
         fpr, tpr, _ = roc_curve(c_gt, c_pd)
         roc = pd.DataFrame({"model": ks[0], "architecture": ks[1], "fold": ks[2],
@@ -201,7 +202,8 @@ for k in range(0, k_fold):
         lr_preds = model.predict_proba(val_x)[:, 1]
         # Evaluate Performance for Logistic Regression
         auc = roc_auc_score(c_gt, lr_preds)
-        list_auroc.append(["ensemble", "LogisticRegression", "cv_" + str(k), c, auc])
+        mAP = average_precision_score(c_gt, lr_preds, average="macro")
+        list_scores.append(["ensemble", "LogisticRegression", "cv_" + str(k), c, auc, mAP])
         fpr, tpr, _ = roc_curve(c_gt, lr_preds)
         roc = pd.DataFrame({"model": "ensemble", "architecture": "LogisticRegression",
                             "fold": "cv_" + str(k), "class": c, "fpr": fpr, "tpr": tpr})
@@ -212,7 +214,8 @@ for k in range(0, k_fold):
         rf_preds = model.predict_proba(val_x)[:, 1]
         # Evaluate Performance for Random Forest
         auc = roc_auc_score(c_gt, rf_preds)
-        list_auroc.append(["ensemble", "RandomForest", "cv_" + str(k), c, auc])
+        mAP = average_precision_score(c_gt, rf_preds, average="macro")
+        list_scores.append(["ensemble", "RandomForest", "cv_" + str(k), c, auc, mAP])
         fpr, tpr, _ = roc_curve(c_gt, rf_preds)
         roc = pd.DataFrame({"model": "ensemble", "architecture": "RandomForest",
                             "fold": "cv_" + str(k), "class": c, "fpr": fpr, "tpr": tpr})
@@ -222,8 +225,8 @@ for k in range(0, k_fold):
 #                Performance Evaluation               #
 #-----------------------------------------------------#
 # Collect evaluation data
-dt_auroc = pd.DataFrame(list_auroc, columns=["model", "architecture", "fold",
-                                             "class", "auroc"])
+dt_scores = pd.DataFrame(list_scores, columns=["model", "architecture", "fold",
+                                             "class", "auroc", "mAP"])
 dt_roc = pd.concat(list_roc, axis=0, sort=False)
 
 # Define a labeller function
@@ -256,9 +259,9 @@ fig = (ggplot(dt_roc, aes("fpr", "tpr", color="class"))
            + scale_x_continuous(limits=[0, 1])
            + scale_y_continuous(limits=[0, 1])
            + scale_color_discrete(name="Classification")
-           + theme_bw(base_size=28))
+           + theme_bw(base_size=18))
 # Store figure to disk
-fig.save(filename="plot.ROC.png", path="./", width=60, height=20, dpi=200,
+fig.save(filename="plot.ROC.png", path="./", width=40, height=20, dpi=200,
          limitsize=False)
 
 # Macro-Average AUROC scores
@@ -301,28 +304,28 @@ fig = (ggplot(dt_roc_avg, aes("fpr", "tpr", color="class"))
            + geom_line(size=1.5)
            + geom_abline(intercept=0, slope=1, color="black",
                          linetype="dashed")
-           + ggtitle("Model Performance Overview")
+           + ggtitle("Performance Overview: Receiver Operating Characteristic")
            + facet_wrap("model + architecture", labeller=label_function_smoothed, ncol=4, nrow=2)
            + xlab("False Positive Rate")
            + ylab("True Positive Rate")
            + scale_x_continuous(limits=[0, 1])
            + scale_y_continuous(limits=[0, 1])
            + scale_color_discrete(name="Classification")
-           + theme_bw(base_size=28))
+           + theme_bw(base_size=32))
 # Store figure to disk
-fig.save(filename="plot.ROC.cv_macroavg.png", path="./", width=50, height=20, dpi=200,
+fig.save(filename="plot.ROC.cv_macroavg.png", path="./", width=35, height=15, dpi=200,
          limitsize=False)
 
 # Store complete evaluation data to disk
-dt_auroc.to_csv("eval_data.complete.csv", sep=",", index=False)
+dt_scores.to_csv("eval_data.complete.csv", sep=",", index=False)
 
 # Compute cross-validation averages
-dt_auroc_avg = dt_auroc.groupby(["model", "architecture", "class"]).mean()
-dt_auroc_avg.to_csv("eval_data.cv_avg.csv", sep=",", index=True)
+dt_scores_avg = dt_scores.groupby(["model", "architecture", "class"]).mean()
+dt_scores_avg.to_csv("eval_data.cv_avg.csv", sep=",", index=True)
 
 # Compute class averages
-dt_auroc_avg = dt_auroc.groupby(["model", "architecture"]).mean()
-dt_auroc_avg.to_csv("eval_data.cv_class_avg.csv", sep=",", index=True)
+dt_scores_avg = dt_scores.groupby(["model", "architecture"]).mean()
+dt_scores_avg.to_csv("eval_data.cv_class_avg.csv", sep=",", index=True)
 
 #-----------------------------------------------------#
 #                  Label Distribution                 #
