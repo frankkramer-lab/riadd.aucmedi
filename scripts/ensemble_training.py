@@ -42,7 +42,6 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # Provide path to imaging data
 path_riadd = "/storage/riadd2021/Upsampled_Set/"
-# path_riadd = "/home/mudomini/data/RIADD/Upsampled_Set/"
 
 path_images = os.path.join(path_riadd, "images")
 path_csv = os.path.join(path_riadd, "data.csv")

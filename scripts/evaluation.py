@@ -35,10 +35,10 @@ from aucmedi import input_interface
 #-----------------------------------------------------#
 #                    Configurations                   #
 #-----------------------------------------------------#
-path_models = "/home/mudomini/projects/riadd.aucmedi/archiv/run_rank30/models"
-path_preds = "/home/mudomini/projects/riadd.aucmedi/archiv/run_rank30/preds"
+path_models = "models"
+path_preds = "preds"
 
-path_riadd = "/home/mudomini/data/RIADD/Upsampled_Set/"
+path_riadd = "/storage/riadd2021/Upsampled_Set/"
 path_images = os.path.join(path_riadd, "images")
 path_csv = os.path.join(path_riadd, "data.csv")
 
