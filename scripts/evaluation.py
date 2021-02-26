@@ -296,9 +296,10 @@ def label_function_smoothed(label):
     label = label.replace("DenseNet201", "DenseNet201")
     label = label.replace("ResNet152", "ResNet152")
     label = label.replace("InceptionV3", "InceptionV3")
-    label = label.replace("RandomForest", "Random Forest")
     label = label.replace("LogisticRegression", "Logistic Regression")
     return label
+
+dt_roc_avg = dt_roc_avg[dt_roc_avg["architecture"] != "RandomForest"]
 
 fig = (ggplot(dt_roc_avg, aes("fpr", "tpr", color="class"))
            + geom_line(size=1.5)
