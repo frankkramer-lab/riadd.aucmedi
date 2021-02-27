@@ -98,6 +98,10 @@ for model_subdir in os.listdir(path_models):
 
     # Iterate over each fold of the CV
     for i in range(0, k_fold):
+        # Skip
+        if os.path.exists(os.path.join(path_res, "classifier." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv")):
+            continue
         # Initialize model
         model = Neural_Network(nclasses, channels=3, architecture=arch,
                                workers=processes,
@@ -163,6 +167,10 @@ for model_subdir in os.listdir(path_models):
 
     # Iterate over each fold of the CV
     for i in range(0, k_fold):
+        # Skip
+        if os.path.exists(os.path.join(path_res, "detector." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv")):
+            continue
         # Initialize model
         model = Neural_Network(nclasses, channels=3, architecture=arch,
                                workers=processes,
@@ -200,6 +208,148 @@ for model_subdir in os.listdir(path_models):
         df_merged.sort_values(by=["ID"], inplace=True)
         # Store predictions to disk
         df_merged.to_csv(os.path.join(path_res, "detector." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv"),
+                         index=False)
+
+        # Garbage collection
+        del model
+
+#-----------------------------------------------------#
+#          AUCMEDI Boost CRS & EDN Inference          #
+#-----------------------------------------------------#
+# Iterate over all detector architectures
+for model_subdir in os.listdir(path_models):
+    # Skip all non detector model subdirs
+    if not model_subdir.startswith("boostCRS_") or not model_subdir.startswith("boostEDN_"): continue
+    # Identify boost class
+    boostclass = model_subdir.split("_")[0]
+    # Identify class
+    boosted_class = boostclass[-3:]
+
+    # Initialize input data reader
+    ds = input_interface(interface="csv", path_imagedir=path_images,
+                         path_data=path_csv, ohe=False, col_sample="ID",
+                         col_class=boosted_class)
+    (index_list, class_ohe, nclasses, class_names, image_format) = ds
+
+    # Set activation output to softmax for binary classification
+    activation_output = "softmax"
+
+    # Identify architecture
+    arch = model_subdir.split("_")[1]
+    path_arch = os.path.join(path_models, model_subdir)
+
+    # Iterate over each fold of the CV
+    for i in range(0, 3):
+        # Initialize model
+        model = Neural_Network(nclasses, channels=3, architecture=arch,
+                               workers=processes,
+                               batch_queue_size=batch_queue_size,
+                               activation_output=activation_output,
+                               loss="categorical_crossentropy",
+                               metrics=["categorical_accuracy", AUC(100)],
+                               pretrained_weights=True, multiprocessing=True)
+
+        # Obtain standardization mode for current architecture
+        sf_standardize = supported_standardize_mode[arch]
+
+        # Define input shape
+        input_shape = model.input_shape[:-1]
+
+        # Load best model
+        path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
+        if os.path.exists(path_cv_model) : model.load(path_cv_model)
+        else:
+            print("Skipping model:", model_subdir, arch, str(i))
+
+        # Apply Inference Augmenting
+        preds = predict_augmenting(model, index_list, path_images, n_cycles=5,
+                                   img_aug=aug, aggregate="mean",
+                                   image_format=image_format, batch_size=64,
+                                   resize=input_shape, grayscale=False,
+                                   subfunctions=sf_list, seed=None,
+                                   standardize_mode=sf_standardize,
+                                   workers=threads)
+
+        # Create prediction dataset
+        df_index = pd.DataFrame(data={"ID": index_list})
+        df_pd = pd.DataFrame(data={cols[0]: preds[:, 1]})
+        df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
+        df_merged.sort_values(by=["ID"], inplace=True)
+        # Store predictions to disk
+        df_merged.to_csv(os.path.join(path_res, boostclass + "." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv"),
+                         index=False)
+
+        # Garbage collection
+        del model
+
+#-----------------------------------------------------#
+#           AUCMEDI Boost Cropping Inference          #
+#-----------------------------------------------------#
+# Initialize input data reader
+ds = input_interface(interface="csv", path_imagedir=path_images,
+                     path_data=path_csv, ohe=True, col_sample="ID",
+                     ohe_range=cols[1:])
+(index_list, class_ohe, nclasses, class_names, image_format) = ds
+
+# Set activation output to sigmoid for multi-label classification
+activation_output = "sigmoid"
+
+# Define input shape
+resize_shape = (416, 416)
+input_shape = (224, 224)
+# Define Subfunctions
+sf_list = [Padding(mode="square"), Retinal_Crop(), Resize(resize_shape),
+           Crop(input_shape)]
+
+# Iterate over all classifier architectures
+for model_subdir in os.listdir(path_models):
+    # Skip all non classifier model subdirs
+    if not model_subdir.startswith("boostCROP_") : continue
+    # Identify architecture
+    arch = model_subdir.split("_")[1]
+    path_arch = os.path.join(path_models, model_subdir)
+
+    # Iterate over each fold of the CV
+    for i in range(0, 3):
+        # Initialize architecture
+        nn_arch = architecture_dict[arch](channels=3, input_shape=input_shape)
+
+        # Initialize model
+        model = Neural_Network(nclasses, channels=3, architecture=nn_arch,
+                               workers=processes,
+                               batch_queue_size=batch_queue_size,
+                               activation_output=activation_output,
+                               loss="binary_crossentropy",
+                               metrics=["binary_accuracy", AUC(100)],
+                               pretrained_weights=True, multiprocessing=True)
+
+        # Obtain standardization mode for current architecture
+        sf_standardize = supported_standardize_mode[arch]
+
+        # Load best model
+        path_cv_model = os.path.join(path_arch, "cv_" + str(i) + ".model.best.hdf5")
+        if os.path.exists(path_cv_model) : model.load(path_cv_model)
+        else:
+            print("Skipping model:", model_subdir, arch, str(i))
+
+        # Apply Inference Augmenting
+        preds = predict_augmenting(model, index_list, path_images, n_cycles=5,
+                                   img_aug=aug, aggregate="mean",
+                                   image_format=image_format, batch_size=64,
+                                   resize=None, grayscale=False,
+                                   subfunctions=sf_list, seed=None,
+                                   standardize_mode=sf_standardize,
+                                   workers=threads)
+
+        # Create prediction dataset
+        df_index = pd.DataFrame(data={"ID": index_list})
+        df_pd = pd.DataFrame(data=preds, columns=[s for s in cols[1:]])
+        df_merged = pd.concat([df_index, df_pd], axis=1, sort=False)
+        df_merged.sort_values(by=["ID"], inplace=True)
+        # Store predictions to disk
+        df_merged.to_csv(os.path.join(path_res, "boostCROP." + arch + "." + \
                                       "cv_" + str(i) + ".ensemble_train.csv"),
                          index=False)
 
