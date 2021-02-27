@@ -91,6 +91,26 @@ for model_subdir in os.listdir(path_models):
         dt_log_cv["model"] = "detector"
         if dt_logs is None : dt_logs = dt_log_cv
         else : dt_logs = pd.concat([dt_logs, dt_log_cv], axis=0)
+# Iterate over all boosting architectures
+for model_subdir in os.listdir(path_models):
+    # Skip all non boosting model subdirs
+    if not model_subdir.startswith("boost") : continue
+    # Identify architecture
+    arch = model_subdir.split("_")[1]
+    path_arch = os.path.join(path_models, model_subdir)
+    # Identify boosting strategy
+    boost = model_subdir.split("_")[0]
+    # Iterate over each fold of the CV
+    for i in range(0, 3):
+        path_fitting_log = os.path.join(path_arch, "cv_" + str(i) + ".logs.csv")
+        dt_log_cv = pd.read_csv(path_fitting_log, sep=",", header=0)
+        dt_log_cv.columns = ["epoch", "auc", "accuracy", "loss",
+                             "val_auc", "val_accuracy", "val_loss"]
+        dt_log_cv["architecture"] = arch
+        dt_log_cv["fold"] = str(i)
+        dt_log_cv["model"] = boost
+        if dt_logs is None : dt_logs = dt_log_cv
+        else : dt_logs = pd.concat([dt_logs, dt_log_cv], axis=0)
 # Melt fitting logs
 dt_logs = dt_logs.melt(id_vars=["model", "architecture", "epoch", "fold"],
                        value_vars=["loss", "val_loss"],
