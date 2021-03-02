@@ -30,8 +30,9 @@ from sklearn.linear_model import LogisticRegression
 # AUCMEDI libraries
 from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmentation
 from aucmedi.neural_network.architectures import supported_standardize_mode
-from aucmedi.data_processing.subfunctions import Padding
+from aucmedi.data_processing.subfunctions import Padding, Crop, Resize
 from aucmedi.ensembler import predict_augmenting
+from aucmedi.neural_network.architectures import architecture_dict
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
@@ -220,7 +221,7 @@ for model_subdir in os.listdir(path_models):
 # Iterate over all detector architectures
 for model_subdir in os.listdir(path_models):
     # Skip all non detector model subdirs
-    if not model_subdir.startswith("boostCRS_") or not model_subdir.startswith("boostEDN_"): continue
+    if not model_subdir.startswith("boostCRS_") and not model_subdir.startswith("boostEDN_"): continue
     # Identify boost class
     boostclass = model_subdir.split("_")[0]
     # Identify class
@@ -241,6 +242,10 @@ for model_subdir in os.listdir(path_models):
 
     # Iterate over each fold of the CV
     for i in range(0, 3):
+        # Skip
+        if os.path.exists(os.path.join(path_res, boostclass + "." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv")):
+            continue
         # Initialize model
         model = Neural_Network(nclasses, channels=3, architecture=arch,
                                workers=processes,
@@ -313,6 +318,10 @@ for model_subdir in os.listdir(path_models):
 
     # Iterate over each fold of the CV
     for i in range(0, 3):
+        # Skip
+        if os.path.exists(os.path.join(path_res, "boostCROP." + arch + "." + \
+                                      "cv_" + str(i) + ".ensemble_train.csv")):
+            continue
         # Initialize architecture
         nn_arch = architecture_dict[arch](channels=3, input_shape=input_shape)
 

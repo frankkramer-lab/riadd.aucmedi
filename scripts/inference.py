@@ -29,6 +29,7 @@ from aucmedi import input_interface, DataGenerator, Neural_Network, Image_Augmen
 from aucmedi.neural_network.architectures import supported_standardize_mode
 from aucmedi.data_processing.subfunctions import Padding, Crop, Resize
 from aucmedi.ensembler import predict_augmenting
+from aucmedi.neural_network.architectures import architecture_dict
 # Custom libraries
 from retinal_crop import Retinal_Crop
 
@@ -267,7 +268,7 @@ activation_output = "softmax"
 # Iterate over all detector architectures
 for model_subdir in os.listdir(path_models):
     # Skip all non detector model subdirs
-    if not model_subdir.startswith("boostCRS_") or not model_subdir.startswith("boostEDN_"): continue
+    if not model_subdir.startswith("boostCRS_") and not model_subdir.startswith("boostEDN_"): continue
     # Identify architecture
     arch = model_subdir.split("_")[1]
     path_arch = os.path.join(path_models, model_subdir)
