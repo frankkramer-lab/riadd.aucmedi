@@ -1,8 +1,9 @@
 # Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models
 
-Participation at the Retinal Image Analysis for multi-Disease Detection Challenge
+Visual impairment and blindness resulting from delayed or missing diagnosis affects billion of people worldwide. Automated multi-disease detection models offer great potential to address this problem via clinical decision support in diagnosis. In this work, we proposed an innovative multi-disease detection pipeline for retinal imaging which utilizes ensemble learning to combine the predictive power of several heterogeneous deep convolutional neural network models. Our pipeline includes state-of-the-art strategies like transfer learning, class weighting, real-time image augmentation and focal loss utilization. Furthermore, we integrated ensemble learning techniques like heterogeneous deep learning models, bagging via 5-fold cross-validation and stacked logistic regression models.
 
-Copy & Paste Abstract
+Participation at the Retinal Image Analysis for multi-Disease Detection Challenge (RIADD):  
+https://riadd.grand-challenge.org/
 
 ## Reproducibility
 
@@ -13,7 +14,7 @@ Copy & Paste Abstract
 
 **Step-by-Step workflow:**  
 
-Adjust RIADD image directory path of all scripts in the 'configuration' section.
+Adjust the RFMiD image directory path of all scripts in the 'configuration' section.
 
 ```sh
 # Train detector models
@@ -37,11 +38,14 @@ python scripts/ensemble.py
 python scripts/evaluation.py
 ```
 
-## Dataset: RIADD
+## Dataset: RFMiD
 
-**Reference:** https://riadd.grand-challenge.org/Home/
+**Reference:**
+- https://riadd.grand-challenge.org/
+-
 
-The Retinal Image Analysis for Multi-Disease Classification (RIADD) is a challenge from the ISBI 2021. The aim is to multi-label classify different sized retinal microscrope images.
+The new Retinal Fundus Multi-Disease Image Dataset (RFMiD) consists of 3200 fundus images and contains 46 retinal conditions including various rare and challenging to detect diseases.  
+The dataset was published associated to the Retinal Image Analysis for Multi-Disease Classification (RIADD) challenge from the ISBI 2021. The aim was to multi-label classify different sized retinal microscrope images.
 
 Microscope distribution:  
 {(1424, 2144, 3): 1493, (1536, 2048, 3): 150, (2848, 4288, 3): 277}
@@ -69,9 +73,17 @@ This pipeline was based on AUCMEDI, which is an in-house developed open-source f
 
 ## Results & Discussion
 
-todo
+![fig_results](docs/plot.ROC.png)
+
+Receiver operating characteristic (ROC) curves for each model type applied in our pipeline. The ROC curves showing
+the individual model performance measured by the true positive and false positive rate. The cross-validation models were
+macro-averaged for each model type to reduce illustration complexity.
 
 ![fig_results](docs/plot.ROC.cv_macroavg.png)
+
+In our participation, we were able to reach rank 18 from a total of 58 teams. In the independent evaluation from the challenge organizers, we achieved an AUROC of 0.95 for the disease risk classification. For multi-label scoring, they computed the average between the macro-averaged AUROC and the mAP, for which we reached the score 0.70. The top performing ranks shared only a marginal scoring difference which is why we had only a final score difference of 0.05 to the first ranked team.
+
+We were able to validate and demonstrate high accuracy and reliability of our pipeline, as well as the comparability with other state-of-the-art pipelines for retinal disease prediction.
 
 ## Author
 
@@ -83,10 +95,16 @@ Bavaria, Germany
 
 ## How to cite / More information
 
-Coming soon.
+Dominik Müller, Iñaki Soto-Rey and Frank Kramer. (2021)   
+Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models.  
+arXiv e-print: Coming soon!
 
 ```
-Coming soon.
+Article{riaddMUELLER2021,
+  title={Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models},
+  author={Dominik Müller, Iñaki Soto-Rey and Frank Kramer},
+  year={2021}
+}
 ```
 
 Thank you for citing our work.
