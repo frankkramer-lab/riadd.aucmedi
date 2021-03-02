@@ -14,6 +14,17 @@ https://riadd.grand-challenge.org/
 
 **Step-by-Step workflow:**  
 
+Download Git repository:
+```sh
+git clone https://github.com/frankkramer-lab/riadd.aucmedi.git
+cd riadd.aucmedi/
+```
+
+Install our in-house developed image classification framework AUCMEDI and all other required module dependencies:
+```sh
+pip install -r requirements.txt
+```
+
 Adjust the RFMiD image directory path of all scripts in the 'configuration' section.
 
 ```sh
