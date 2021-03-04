@@ -1,6 +1,7 @@
 # Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4573990.svg)](https://doi.org/10.5281/zenodo.4573990)
+[![shield_license](https://img.shields.io/github/license/frankkramer-lab/riadd.aucmedi)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 Visual impairment and blindness resulting from delayed or missing diagnosis affects billion of people worldwide. Automated multi-disease detection models offer great potential to address this problem via clinical decision support in diagnosis. In this work, we proposed an innovative multi-disease detection pipeline for retinal imaging which utilizes ensemble learning to combine the predictive power of several heterogeneous deep convolutional neural network models. Our pipeline includes state-of-the-art strategies like transfer learning, class weighting, real-time image augmentation and focal loss utilization. Furthermore, we integrated ensemble learning techniques like heterogeneous deep learning models, bagging via 5-fold cross-validation and stacked logistic regression models.
 
