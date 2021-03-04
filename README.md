@@ -5,6 +5,9 @@ Visual impairment and blindness resulting from delayed or missing diagnosis affe
 Participation at the Retinal Image Analysis for multi-Disease Detection Challenge (RIADD):  
 https://riadd.grand-challenge.org/
 
+The models, predictions, metadata and evaluation results (scores, figures) are available under the following Zenodo repository:  
+https://doi.org/10.5281/zenodo.4573990
+
 ## Reproducibility
 
 **Requirements:**
@@ -52,8 +55,12 @@ python scripts/evaluation.py
 ## Dataset: RFMiD
 
 **Reference:**
-- https://riadd.grand-challenge.org/
--
+https://riadd.grand-challenge.org/
+
+    Pachade S, Porwal P, Thulkar D, Kokare M, Deshmukh G, Sahasrabuddhe V, Giancardo L, Quellec G, Mériaudeau F.
+    Retinal Fundus Multi-Disease Image Dataset (RFMiD): A Dataset for Multi-Disease Detection Research. 
+    Data. 2021; 6(2):14.
+    https://doi.org/10.3390/data6020014
 
 The new Retinal Fundus Multi-Disease Image Dataset (RFMiD) consists of 3200 fundus images and contains 46 retinal conditions including various rare and challenging to detect diseases.  
 The dataset was published associated to the Retinal Image Analysis for Multi-Disease Classification (RIADD) challenge from the ISBI 2021. The aim was to multi-label classify different sized retinal microscrope images.
