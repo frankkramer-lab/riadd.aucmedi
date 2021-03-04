@@ -1,5 +1,7 @@
 # Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4573990.svg)](https://doi.org/10.5281/zenodo.4573990)
+
 Visual impairment and blindness resulting from delayed or missing diagnosis affects billion of people worldwide. Automated multi-disease detection models offer great potential to address this problem via clinical decision support in diagnosis. In this work, we proposed an innovative multi-disease detection pipeline for retinal imaging which utilizes ensemble learning to combine the predictive power of several heterogeneous deep convolutional neural network models. Our pipeline includes state-of-the-art strategies like transfer learning, class weighting, real-time image augmentation and focal loss utilization. Furthermore, we integrated ensemble learning techniques like heterogeneous deep learning models, bagging via 5-fold cross-validation and stacked logistic regression models.
 
 Participation at the Retinal Image Analysis for multi-Disease Detection Challenge (RIADD):  
@@ -58,7 +60,7 @@ python scripts/evaluation.py
 https://riadd.grand-challenge.org/
 
     Pachade S, Porwal P, Thulkar D, Kokare M, Deshmukh G, Sahasrabuddhe V, Giancardo L, Quellec G, Mériaudeau F.
-    Retinal Fundus Multi-Disease Image Dataset (RFMiD): A Dataset for Multi-Disease Detection Research. 
+    Retinal Fundus Multi-Disease Image Dataset (RFMiD): A Dataset for Multi-Disease Detection Research.
     Data. 2021; 6(2):14.
     https://doi.org/10.3390/data6020014
 
