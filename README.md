@@ -118,13 +118,16 @@ Bavaria, Germany
 
 Dominik Müller, Iñaki Soto-Rey and Frank Kramer. (2021)   
 Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models.  
-arXiv e-print: Coming soon!
+arXiv e-print: [https://arxiv.org/abs/2103.14660](https://arxiv.org/abs/2103.14660)
 
 ```
 Article{riaddMUELLER2021,
   title={Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models},
   author={Dominik Müller, Iñaki Soto-Rey and Frank Kramer},
   year={2021}
+  eprint={2103.14660},
+  archivePrefix={arXiv},
+  primaryClass={eess.IV}
 }
 ```
 
