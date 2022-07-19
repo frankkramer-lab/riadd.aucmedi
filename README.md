@@ -90,6 +90,14 @@ The implemented medical image classification pipeline can be summarized in the f
 
 ![fig_pipeline](docs/RIADD_aucmedi.png)
 
+### Based on Framework: AUCMEDI
+
+![AUCMEDI_LOGO](https://github.com/frankkramer-lab/aucmedi/raw/master/docs/images/aucmedi.logo.description.png)
+
+The open-source software AUCMEDI allows fast setup of medical image classification pipelines with state-of-the-art methods via an intuitive, high-level Python API or via an AutoML deployment through Docker/CLI.
+
+[https://github.com/frankkramer-lab/aucmedi](https://github.com/frankkramer-lab/aucmedi)
+
 This pipeline was based on AUCMEDI, which is an in-house developed open-source framework to setup complete medical image classification pipelines with deep learning models on top of Tensorflow/Keras⁠. The framework supports extensive preprocessing, image augmentation, class imbalance strategies, state-of-the-art deep learning models and ensemble learning techniques. The experiment was performed in parallel with multiple NVIDIA TITAN RTX GPUs.
 
 ## Results & Discussion
@@ -118,6 +126,7 @@ Bavaria, Germany
 
 Dominik Müller, Iñaki Soto-Rey and Frank Kramer. (2021)   
 Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models.  
+PubMed: https://pubmed.ncbi.nlm.nih.gov/34545816/
 arXiv e-print: [https://arxiv.org/abs/2103.14660](https://arxiv.org/abs/2103.14660)
 
 ```
@@ -125,6 +134,10 @@ Article{riaddMUELLER2021,
   title={Multi-Disease Detection in Retinal Imaging based on Ensembling Heterogeneous Deep Learning Models},
   author={Dominik Müller, Iñaki Soto-Rey and Frank Kramer},
   year={2021}
+  journal={Studies in Health Technology and Informatics},
+  volume={283},
+  url={https://doi.org/10.3233/shti210537},
+  doi={10.3233/shti210537},
   eprint={2103.14660},
   archivePrefix={arXiv},
   primaryClass={eess.IV}
